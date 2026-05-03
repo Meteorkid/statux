@@ -8,6 +8,8 @@
   },
   "scripts": {
     "start": "bun src/cli.ts",
+    "build": "bun scripts/build.ts",
+    "build:local": "bun build --compile --outfile dist/statux src/cli.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
