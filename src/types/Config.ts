@@ -10,12 +10,13 @@ const WidgetItemSchema = z.object({
   hide: z.boolean().optional(),
   maxWidth: z.number().optional(),
   merge: z.union([z.boolean(), z.literal("no-padding")]).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const PowerlineConfigSchema = z.object({
   separator: z.string().default(""),
   thinSeparator: z.string().default(""),
+  theme: z.string().default("dark"),
   capStart: z.string().optional(),
   capEnd: z.string().optional(),
 });

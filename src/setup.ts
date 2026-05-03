@@ -42,7 +42,7 @@ async def main(connection):
                 if data.get("ctxPct") is not None:
                     parts.append(f"ctx:{data['ctxPct']}%")
                 if data.get("cost"):
-                    parts.append(f"${data['cost']}")
+                    parts.append(f"\${data['cost']}")
                 if data.get("rateLimit") is not None:
                     parts.append(f"rl:{data['rateLimit']}%")
                 return " | ".join(parts) if parts else ""

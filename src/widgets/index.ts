@@ -10,18 +10,39 @@ import { CostWidget } from "./cost";
 import { RateLimitWidget } from "./rate-limit";
 import { SeparatorWidget } from "./separator";
 import { FlexSeparatorWidget } from "./flex-separator";
+import { ThinkingEffortWidget } from "./thinking-effort";
+import { CompactionWidget } from "./compaction";
+import { OutputSpeedWidget, TotalSpeedWidget } from "./speed";
+import { ToolCallsWidget } from "./tool-calls";
+import { CustomCommandWidget } from "./custom-command";
+import { SessionNameWidget } from "./session-name";
 
 /** 注册所有内置 widget */
 export function registerAllWidgets(): void {
+  // Core
   registerWidget(ModelWidget);
+  // Context
   registerWidget(ContextBarWidget);
   registerWidget(ContextPctWidget);
+  // Tokens
   registerWidget(TokensWidget);
+  registerWidget(OutputSpeedWidget);
+  registerWidget(TotalSpeedWidget);
+  // Git
   registerWidget(GitBranchWidget);
   registerWidget(GitStatusWidget);
+  // Session
   registerWidget(SessionClockWidget);
+  registerWidget(SessionNameWidget);
   registerWidget(CostWidget);
   registerWidget(RateLimitWidget);
+  registerWidget(CompactionWidget);
+  registerWidget(ToolCallsWidget);
+  // Claude
+  registerWidget(ThinkingEffortWidget);
+  // Custom
+  registerWidget(CustomCommandWidget);
+  // Layout
   registerWidget(SeparatorWidget);
   registerWidget(FlexSeparatorWidget);
 }

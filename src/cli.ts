@@ -28,12 +28,24 @@ async function main() {
     return;
   }
 
+  // --tui 交互式配置
+  if (process.argv.includes("--tui") || process.argv.includes("-t")) {
+    const { default: React } = await import("react");
+    const { render: inkRender } = await import("ink");
+    const { App } = await import("./tui/App");
+    const { registerAllWidgets: reg } = await import("./widgets");
+    reg();
+    inkRender(React.createElement(App));
+    return;
+  }
+
   // --help
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log(`statux — AI Agent status display
 
 Usage:
   echo '<json>' | statux          # Claude Code statusLine mode
+  statux --tui                    # Interactive config editor
   statux --setup                  # Install iTerm2 plugin
   statux --config <path>          # Use custom config file
   statux --help                   # Show this help`);

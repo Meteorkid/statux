@@ -3,6 +3,7 @@ import type { RenderContext, PreRenderedWidget, WidgetItem } from "../types/Widg
 import { getWidget } from "../widgets/registry";
 import { getVisibleWidth, getVisibleText, padToWidth, reset } from "./ansi";
 import { calculateFlexWidth } from "../widgets/flex-separator";
+import { renderPowerlineLine } from "./powerline";
 
 const DEFAULT_TERMINAL_WIDTH = 120;
 
@@ -99,6 +100,9 @@ export function renderStatusLines(
   return preRendered
     .map((lineWidgets, i) => {
       if (lineWidgets.length === 0) return "";
+      if (config.renderMode === "powerline") {
+        return renderPowerlineLine(lineWidgets, config, ctx.terminalWidth);
+      }
       return assembleStatusLine(lineWidgets, config, ctx.terminalWidth);
     })
     .filter((line) => getVisibleText(line).trim().length > 0);
