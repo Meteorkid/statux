@@ -3,7 +3,7 @@ import { colorize } from "../render/ansi";
 
 export const CompactionWidget: Widget = {
   type: "compaction",
-  category: "session",
+  category: "context",
   displayName: "Compaction Count",
   description: "上下文压缩次数",
   defaultColor: "yellow",

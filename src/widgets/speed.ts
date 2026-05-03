@@ -8,7 +8,7 @@ function formatSpeed(tokensPerSec: number): string {
 
 export const OutputSpeedWidget: Widget = {
   type: "output-speed",
-  category: "speed",
+  category: "tokens",
   displayName: "Output Speed",
   description: "输出 token 速度",
   defaultColor: "cyan",
@@ -32,7 +32,7 @@ export const OutputSpeedWidget: Widget = {
 
 export const TotalSpeedWidget: Widget = {
   type: "total-speed",
-  category: "speed",
+  category: "tokens",
   displayName: "Total Speed",
   description: "总 token 速度",
   defaultColor: "cyan",

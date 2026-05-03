@@ -38,9 +38,9 @@ import { LinkWidget } from "./link";
 import { CustomTextWidget, CustomSymbolWidget } from "./custom-text";
 import { JjBookmarksWidget, JjWorkspaceWidget, JjRootDirWidget, JjChangesWidget, JjInsertionsWidget, JjDeletionsWidget, JjDescriptionWidget, JjRevisionWidget } from "./jujutsu";
 
-/** 注册所有内置 widget */
+/** 注册所有内置 widget（65 个） */
 export function registerAllWidgets(): void {
-  // Core
+  // === Core (8) ===
   registerWidget(ModelWidget);
   registerWidget(OutputStyleWidget);
   registerWidget(VersionWidget);
@@ -50,7 +50,7 @@ export function registerAllWidgets(): void {
   registerWidget(TerminalWidthWidget);
   registerWidget(FreeMemoryWidget);
 
-  // Context
+  // === Context (6) ===
   registerWidget(ContextBarWidget);
   registerWidget(ContextPctWidget);
   registerWidget(ContextLengthWidget);
@@ -58,7 +58,7 @@ export function registerAllWidgets(): void {
   registerWidget(ContextPctUsableWidget);
   registerWidget(CompactionWidget);
 
-  // Tokens
+  // === Tokens & Speed (9) ===
   registerWidget(TokensWidget);
   registerWidget(TokensInputWidget);
   registerWidget(TokensOutputWidget);
@@ -68,7 +68,7 @@ export function registerAllWidgets(): void {
   registerWidget(TotalSpeedWidget);
   registerWidget(InputSpeedWidget);
 
-  // Git
+  // === Git (17) ===
   registerWidget(GitBranchWidget);
   registerWidget(GitStatusWidget);
   registerWidget(GitChangesWidget);
@@ -87,7 +87,7 @@ export function registerAllWidgets(): void {
   registerWidget(GitWorktreeWidget);
   registerWidget(GitPrWidget);
 
-  // Session
+  // === Session (7) ===
   registerWidget(SessionClockWidget);
   registerWidget(SessionNameWidget);
   registerWidget(CostWidget);
@@ -96,20 +96,20 @@ export function registerAllWidgets(): void {
   registerWidget(AccountEmailWidget);
   registerWidget(SkillsWidget);
 
-  // Usage
+  // === Usage (5) ===
   registerWidget(BlockTimerWidget);
   registerWidget(RateLimitTimerWidget);
   registerWidget(SessionUsageWidget);
   registerWidget(WeeklyUsageWidget);
   registerWidget(WeeklyResetTimerWidget);
 
-  // Custom
+  // === Custom (4) ===
   registerWidget(CustomCommandWidget);
   registerWidget(CustomTextWidget);
   registerWidget(CustomSymbolWidget);
   registerWidget(LinkWidget);
 
-  // Jujutsu
+  // === Jujutsu (8) ===
   registerWidget(JjBookmarksWidget);
   registerWidget(JjWorkspaceWidget);
   registerWidget(JjRootDirWidget);
@@ -119,7 +119,7 @@ export function registerAllWidgets(): void {
   registerWidget(JjDescriptionWidget);
   registerWidget(JjRevisionWidget);
 
-  // Layout
+  // === Layout (2) ===
   registerWidget(SeparatorWidget);
   registerWidget(FlexSeparatorWidget);
 }

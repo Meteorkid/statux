@@ -17,7 +17,7 @@ const EFFORT_COLORS: Record<string, string> = {
 
 export const ThinkingEffortWidget: Widget = {
   type: "thinking-effort",
-  category: "claude",
+  category: "core",
   displayName: "Thinking Effort",
   description: "当前思维努力级别",
   defaultColor: "cyan",
