@@ -2,9 +2,8 @@ import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
 
 function formatTokens(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return Math.round(n / 1_000) + "k";
-  return String(n);
+  const k = n / 1_000;
+  return k >= 1000 ? (k / 1000).toFixed(1) + "M" : (Number.isInteger(k) ? k.toFixed(0) : k.toFixed(1)) + "k";
 }
 
 export const ContextLengthWidget: Widget = {

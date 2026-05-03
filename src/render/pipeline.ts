@@ -1,7 +1,7 @@
 import type { Config } from "../types/Config";
 import type { RenderContext, PreRenderedWidget, WidgetItem } from "../types/Widget";
 import { getWidget } from "../widgets/registry";
-import { getVisibleWidth, getVisibleText, padToWidth, reset } from "./ansi";
+import { getVisibleWidth, getVisibleText, padToWidth, colorize, reset } from "./ansi";
 import { calculateFlexWidth } from "../widgets/flex-separator";
 import { renderPowerlineLine } from "./powerline";
 
@@ -23,7 +23,21 @@ export function preRenderAllWidgets(
         return { item, text: null, visibleText: "", width: 0 };
       }
 
-      const text = widget.render(item, ctx);
+      let text = widget.render(item, ctx);
+
+      // label 处理：null 时显示 label:none，有值时前置 label:
+      if (item.label) {
+        const color = item.color || widget.defaultColor;
+        if (text === null) {
+          text = colorize(`${item.label}:none`, color, item.bold);
+        } else {
+          const plain = getVisibleText(text);
+          if (!plain.startsWith(item.label + ":")) {
+            text = `${colorize(item.label + ":", color, item.bold)}${text}`;
+          }
+        }
+      }
+
       if (text === null) {
         return { item, text: null, visibleText: "", width: 0 };
       }

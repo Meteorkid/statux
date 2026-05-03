@@ -43,6 +43,7 @@ export interface RenderContext {
 export interface WidgetItem {
   id: string;
   type: string;
+  label?: string;
   color?: string;
   backgroundColor?: string;
   bold?: boolean;

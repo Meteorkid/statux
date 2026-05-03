@@ -25,7 +25,7 @@ export const OutputSpeedWidget: Widget = {
     }
 
     if (speed === 0) return null;
-    const label = item.rawValue ? "" : "spd:";
+    const label = item.rawValue ? "" : "out-spd:";
     return colorize(`${label}${formatSpeed(speed)}`, item.color || this.defaultColor, item.bold);
   },
 };

@@ -11,6 +11,8 @@ const FG = {
   cyan: "\x1b[36m",
   white: "\x1b[37m",
   gray: "\x1b[90m",
+  orange: "\x1b[38;5;208m",
+  pink: "\x1b[38;5;213m",
 } as const;
 
 const BG = {
@@ -22,6 +24,8 @@ const BG = {
   magenta: "\x1b[45m",
   cyan: "\x1b[46m",
   white: "\x1b[47m",
+  orange: "\x1b[48;5;208m",
+  pink: "\x1b[48;5;213m",
 } as const;
 
 const RESET = "\x1b[0m";
@@ -40,6 +44,8 @@ const COLOR_MAP: Record<string, string> = {
   white: FG.white,
   gray: FG.gray,
   grey: FG.gray,
+  orange: FG.orange,
+  pink: FG.pink,
 };
 
 const BG_COLOR_MAP: Record<string, string> = {
@@ -51,6 +57,8 @@ const BG_COLOR_MAP: Record<string, string> = {
   magenta: BG.magenta,
   cyan: BG.cyan,
   white: BG.white,
+  orange: BG.orange,
+  pink: BG.pink,
 };
 
 /** 将文本包裹在颜色中 */

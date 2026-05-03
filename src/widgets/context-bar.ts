@@ -23,10 +23,12 @@ export const ContextBarWidget: Widget = {
     const empty = BAR_WIDTH - filled;
     const bar = FILLED.repeat(filled) + EMPTY.repeat(empty);
 
-    let color = item.color || this.defaultColor;
+    let color: string;
     if (pct > 80) color = "red";
-    else if (pct > 60) color = "yellow";
+    else if (pct > 60) color = "magenta";
+    else if (pct > 20) color = "green";
+    else color = "white";
 
-    return colorize(`[${bar}] ${Math.round(pct)}%`, color, item.bold);
+    return colorize(`ctx:[${bar}] ${Math.round(pct)}%`, color, item.bold);
   },
 };

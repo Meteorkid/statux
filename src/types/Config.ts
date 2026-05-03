@@ -3,6 +3,7 @@ import { z } from "zod";
 const WidgetItemSchema = z.object({
   id: z.string(),
   type: z.string(),
+  label: z.string().optional(),
   color: z.string().optional(),
   backgroundColor: z.string().optional(),
   bold: z.boolean().optional(),

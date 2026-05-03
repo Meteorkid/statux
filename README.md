@@ -9,7 +9,9 @@
 statux 是一个终端状态显示工具，为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 和 [iTerm2](https://iterm2.com/) 提供 AI Agent 的实时状态信息。支持 65 个可配置 Widget、Powerline 渲染、交互式 TUI 配置界面。
 
 ```
-opus-4.7 │ [████████░░] 82% │ in:45k out:12k │ main +3 ~1 │ 25m │ $0.35
+mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░░] 82% │ len:85k
+dir:~/projects/app │ tok:in:45k out:12k │ in-spd:1.2k/s │ out-spd:800/s
+cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
 ```
 
 ---
@@ -49,7 +51,8 @@ opus-4.7 │ [████████░░] 82% │ in:45k out:12k │ main +3
 - **TUI 配置界面** — 基于 Ink (React for CLI) 的交互式配置，支持搜索、排序、预览
 - **Anthropic Usage API** — 实时获取 session/weekly 用量数据
 - **多平台二进制** — macOS (arm64/x64) + Linux (x64/arm64)，无依赖独立运行
-- **零配置可用** — 默认布局开箱即用，按需自定义
+- **标签系统** — 每个 Widget 支持 `label` 前缀，无数据时自动显示 `label:none`
+- **10 种颜色** — 支持 black, red, green, yellow, blue, magenta, cyan, white, orange, pink
 
 ---
 
@@ -182,7 +185,7 @@ statux CLI → OSC 1337 自定义序列 → iTerm2 Python daemon → 状态栏 +
 
 ## Widget 目录
 
-statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定义颜色和粗体。
+statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定义颜色、粗体和标签。
 
 ### Core — 核心信息
 
@@ -197,9 +200,9 @@ statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定
 | `thinking-effort` | `thinking-effort` | 思维努力级别 | `think:high` |
 | `vim-mode` | `vim-mode` | Vim 模式指示器 | `[N]` `[I]` `[V]` |
 | `terminal-width` | `terminal-width` | 终端宽度（列数） | `cols:120` |
-| `free-memory` | `free-memory` | 系统可用内存 | `mem:8.2G` |
+| `free-memory` | `free-memory` | 系统可用内存 | `Mem:12G/36G` |
 
-**`thinking-effort` 说明：**
+**`thinking-effort` 颜色：**
 
 | 级别 | 显示 | 颜色 |
 |------|------|------|
@@ -214,19 +217,20 @@ statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定
 
 | Widget | 类型 | 说明 | 输出示例 |
 |--------|------|------|---------|
-| `context-bar` | `context-bar` | 上下文使用率进度条 | `[████████░░] 82%` |
+| `context-bar` | `context-bar` | 上下文使用率进度条（含 `ctx:` 标签） | `ctx:[████████░░] 82%` |
 | `context-pct` | `context-pct` | 上下文使用率（纯数字） | `ctx:82%` |
-| `context-length` | `context-length` | 当前上下文长度 | `ctx:45.2k` |
+| `context-length` | `context-length` | 当前上下文长度（始终以 k 为单位） | `len:85k` |
 | `context-window` | `context-window` | 上下文窗口总大小 | `win:200k` |
 | `context-pct-usable` | `context-pct-usable` | 可用上下文百分比 | `usable:18%` |
 | `compaction` | `compaction` | 上下文压缩次数 | `compact:2` |
 
-**`context-bar` 进度条颜色：**
+**`context-bar` 颜色（随百分比动态变化，含 `ctx:` 标签同色）：**
 
 | 使用率 | 颜色 |
 |--------|------|
-| < 50% | 绿色 |
-| 50-80% | 黄色 |
+| 0-20% | 白色 |
+| 20-60% | 绿色 |
+| 60-80% | 紫色 |
 | > 80% | 红色 |
 
 ### Tokens & Speed — Token 与速度
@@ -240,9 +244,9 @@ statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定
 | `tokens-output` | `tokens-output` | 输出 Token 数量 | `output:12k` |
 | `tokens-cached` | `tokens-cached` | 缓存命中 Token 数量 | `cached:30k` |
 | `tokens-total` | `tokens-total` | 总 Token 数量 | `total:57k` |
-| `output-speed` | `output-speed` | 输出 Token 速度 | `spd:85/s` |
+| `input-speed` | `input-speed` | 输入 Token 速度 | `in-spd:1.2k/s` |
+| `output-speed` | `output-speed` | 输出 Token 速度 | `out-spd:800/s` |
 | `total-speed` | `total-speed` | 总 Token 速度 | `120/s` |
-| `input-speed` | `input-speed` | 输入 Token 速度 | `in:200/s` |
 
 **速度格式化：**
 - < 1000/s: `85/s`
@@ -307,9 +311,17 @@ statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定
 | `session-name` | `session-name` | 会话名称 | `session:debug-auth` |
 | `cost` | `cost` | 本次会话费用（USD） | `$0.35` |
 | `rate-limit` | `rate-limit` | 速率限制使用率 | `rl:42%` |
-| `tool-calls` | `tool-calls` | 工具调用次数 | `tools:15` |
+| `tool-calls` | `tool-calls` | 最近工具调用 | `Read→Edit→Bash` |
 | `account-email` | `account-email` | Anthropic 账户邮箱 | `user@example.com` |
-| `skills` | `skills` | 可用 Skills 数量 | `skills:12` |
+| `skills` | `skills` | Skill 调用统计 | `3 skills` |
+
+**`skills` 模式（通过 `metadata.mode` 设置）：**
+
+| 模式 | 说明 | 输出示例 |
+|------|------|---------|
+| `count`（默认） | 调用总数 | `3 skills` |
+| `last` | 最近调用的 skill 名 | `code-review` |
+| `list` | 去重列表（逗号分隔） | `code-review,init,triage` |
 
 **`rate-limit` 颜色：**
 
@@ -404,7 +416,7 @@ statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定
 | `separator` | `separator` | 静态分隔符 | ` │ ` |
 | `flex-separator` | `flex-separator` | 自动填充空格 | （占据剩余宽度） |
 
-**`separator` 默认值：** ` │ `（可自定义为任意字符串）
+**`separator` 默认值：** ` │ `（可自定义为任意字符串，通过 `metadata.separator` 设置）
 
 **`flex-separator` 用途：** 在多 Widget 布局中，将左右两侧的内容分别推到屏幕两端。
 
@@ -417,7 +429,7 @@ statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定
 标准 ANSI 文本渲染，Widget 之间使用分隔符连接。
 
 ```
-opus-4.7 │ [████████░░] 82% │ in:45k out:12k │ main │ $0.35
+mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░░] 82% │ len:85k
 ```
 
 ### Powerline 模式
@@ -452,29 +464,48 @@ opus-4.7 │ [████████░░] 82% │ in:45k out:12k │ main �
 
 配置文件路径：`~/.config/statux/settings.json`
 
-### 完整配置示例
+### 默认配置（三行布局）
 
 ```json
 {
   "version": 1,
   "lines": [
     [
-      { "id": "model", "type": "model" },
-      { "id": "sep1", "type": "separator" },
-      { "id": "ctx", "type": "context-bar" },
-      { "id": "sep2", "type": "separator" },
-      { "id": "tokens", "type": "tokens" },
-      { "id": "flex", "type": "flex-separator" },
-      { "id": "git", "type": "git-branch" },
-      { "id": "sep3", "type": "separator" },
-      { "id": "cost", "type": "cost" }
+      { "id": "model", "type": "model", "label": "mdl", "color": "orange", "merge": "no-padding" },
+      { "id": "s1", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "think", "type": "thinking-effort", "color": "green", "merge": "no-padding" },
+      { "id": "s2", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "mem", "type": "free-memory", "color": "yellow", "merge": "no-padding" },
+      { "id": "s3", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "ctxbar", "type": "context-bar", "merge": "no-padding" },
+      { "id": "s4", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "ctxlen", "type": "context-length", "label": "len", "color": "cyan", "merge": "no-padding" }
+    ],
+    [
+      { "id": "cwd", "type": "custom-command", "label": "dir", "color": "cyan", "merge": "no-padding", "metadata": { "command": "pwd | sed \"s|$HOME|~|\"", "maxLength": 60 } },
+      { "id": "s5", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "tok", "type": "tokens", "label": "tok", "color": "magenta", "merge": "no-padding" },
+      { "id": "s6", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "ispeed", "type": "input-speed", "label": "in-spd", "color": "orange", "merge": "no-padding" },
+      { "id": "s7", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "ospeed", "type": "output-speed", "label": "out-spd", "color": "green", "merge": "no-padding" }
+    ],
+    [
+      { "id": "cost", "type": "cost", "label": "cost", "color": "green", "merge": "no-padding" },
+      { "id": "s8", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "clock", "type": "session-clock", "label": "time", "color": "yellow", "merge": "no-padding" },
+      { "id": "s9", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "tools", "type": "tool-calls", "label": "tools", "color": "blue", "merge": "no-padding" },
+      { "id": "s10", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "wt", "type": "git-worktree", "label": "wt", "color": "red", "merge": "no-padding" },
+      { "id": "s11", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "sk", "type": "skills", "label": "sk", "color": "white", "merge": "no-padding" }
     ]
   ],
   "renderMode": "normal",
   "colorLevel": 3,
-  "powerline": {
-    "theme": "dark"
-  }
+  "globalBold": true,
+  "minimalistMode": false
 }
 ```
 
@@ -483,9 +514,11 @@ opus-4.7 │ [████████░░] 82% │ in:45k out:12k │ main �
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `version` | `number` | `1` | 配置版本号，用于迁移 |
-| `lines` | `Widget[][]` | `[[...]]` | 多行 Widget 布局 |
+| `lines` | `Widget[][]` | 三行布局 | 多行 Widget 布局 |
 | `renderMode` | `"normal" \| "powerline"` | `"normal"` | 渲染模式 |
 | `colorLevel` | `0 \| 1 \| 2 \| 3` | `3` | 颜色级别（0=无色, 3=真彩色） |
+| `globalBold` | `boolean` | `true` | 全局粗体 |
+| `minimalistMode` | `boolean` | `false` | 极简模式 |
 | `powerline.theme` | `string` | `"dark"` | Powerline 主题名 |
 
 ### Widget 配置项
@@ -496,13 +529,28 @@ opus-4.7 │ [████████░░] 82% │ in:45k out:12k │ main �
 |------|------|------|
 | `id` | `string` | 唯一标识符 |
 | `type` | `string` | Widget 类型（见上方目录） |
+| `label` | `string` | 缩写标签，有值时前置 `label:`，无值时显示 `label:none` |
 | `color` | `string` | 自定义颜色（覆盖默认值） |
 | `bold` | `boolean` | 是否粗体 |
-| `hidden` | `boolean` | 是否隐藏 |
+| `hide` | `boolean` | 是否隐藏 |
 | `rawValue` | `boolean` | 是否显示原始值（无标签） |
+| `merge` | `boolean \| "no-padding"` | 合并模式，`"no-padding"` 去除 Widget 前后空格 |
+| `maxWidth` | `number` | 最大显示宽度 |
 | `metadata` | `object` | Widget 特定参数 |
 
-**可用颜色：** `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`
+**可用颜色：** `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`, `orange`, `pink`
+
+> `orange` 和 `pink` 使用 256 色码（`\x1b[38;5;208m` 和 `\x1b[38;5;213m`），需要终端支持 256 色。
+
+**`label` 行为：**
+- Widget 有值且文本不以 `label:` 开头 → 前置 `label:` 前缀
+- Widget 有值且文本已以 `label:` 开头 → 不重复添加
+- Widget 返回 null → 显示 `label:none`
+
+**`merge` 行为：**
+- 默认（不设置）：Widget 前后各加一个空格
+- `true`：与相邻 Widget 紧密拼接
+- `"no-padding"`：与相邻 Widget 紧密拼接，适用于紧贴分隔符的场景
 
 ---
 
@@ -546,19 +594,18 @@ statux (TypeScript/Bun)
 │   ├── setup.ts               # iTerm2 plugin 安装
 │   ├── types/
 │   │   ├── StatusJSON.ts      # Claude Code 输入 schema (Zod)
-│   │   ├── Widget.ts          # Widget 接口定义
+│   │   ├── Widget.ts          # Widget 接口定义（含 label 字段）
 │   │   └── Config.ts          # 配置 schema
 │   ├── widgets/               # 65 个 Widget 实现
 │   │   ├── registry.ts        # Widget 注册表
 │   │   └── *.ts               # 各 Widget 文件
 │   ├── render/
-│   │   ├── pipeline.ts        # 两阶段渲染：预渲染 + 组装
-│   │   ├── ansi.ts            # ANSI 转义码工具
+│   │   ├── pipeline.ts        # 两阶段渲染：预渲染（含 label 处理）+ 组装
+│   │   ├── ansi.ts            # ANSI 转义码工具（含 orange/pink 256 色）
 │   │   └── powerline.ts       # Powerline 箭头渲染
 │   ├── data/
 │   │   ├── jsonl.ts           # 解析 transcript.jsonl
 │   │   ├── git.ts             # Git 状态采集
-│   │   ├── metrics.ts         # Token/速度/费用计算
 │   │   └── usage-api.ts       # Anthropic Usage API 客户端
 │   ├── config.ts              # 配置加载/保存/迁移
 │   └── tui/                   # Ink TUI 配置界面
@@ -630,6 +677,8 @@ git push origin v0.2.0
 | 维度 | statux | ccstatusline |
 |------|--------|-------------|
 | Widget 数量 | 65 | 73 |
+| 标签系统 | ✅ 自动 label/none 回退 | ❌ |
+| 颜色数量 | 10（含 orange/pink 256 色） | 8 |
 | Powerline 渲染 | ✅ 内置支持 | ❌ |
 | TUI 配置界面 | ✅ Ink (React) | ❌ |
 | iTerm2 状态栏集成 | ✅ Python Plugin | ❌ |
