@@ -5,6 +5,7 @@ import { loadConfig } from "./config";
 import { registerAllWidgets } from "./widgets";
 import { renderStatusLines } from "./render/pipeline";
 import { getTokenMetrics, getSessionDuration, getSpeedMetricsCollection } from "./data/jsonl";
+import { fetchUsageData, extractUsageFromRateLimits } from "./data/usage-api";
 import { terminalColumns } from "./utils/terminal";
 
 /** 读取 stdin */
@@ -98,6 +99,10 @@ Usage:
     }
   }
 
+  // Usage 数据（优先从 rate_limits 提取，不完整时调用 API）
+  const rateLimitsUsage = extractUsageFromRateLimits(data.rate_limits);
+  const usageData = await fetchUsageData(rateLimitsUsage);
+
   const ctx: RenderContext = {
     data,
     tokenMetrics,
@@ -105,6 +110,7 @@ Usage:
     windowedSpeedMetrics,
     sessionDuration,
     terminalWidth: terminalColumns(),
+    usageData,
   };
 
   // 渲染

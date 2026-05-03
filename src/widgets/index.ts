@@ -17,6 +17,9 @@ import { SessionNameWidget } from "./session-name";
 import { CostWidget } from "./cost";
 import { RateLimitWidget } from "./rate-limit";
 import { RateLimitTimerWidget, BlockTimerWidget } from "./usage";
+import { SessionUsageWidget } from "./session-usage";
+import { WeeklyUsageWidget } from "./weekly-usage";
+import { WeeklyResetTimerWidget } from "./weekly-reset-timer";
 import { SeparatorWidget } from "./separator";
 import { FlexSeparatorWidget } from "./flex-separator";
 import { ThinkingEffortWidget } from "./thinking-effort";
@@ -96,6 +99,9 @@ export function registerAllWidgets(): void {
   // Usage
   registerWidget(BlockTimerWidget);
   registerWidget(RateLimitTimerWidget);
+  registerWidget(SessionUsageWidget);
+  registerWidget(WeeklyUsageWidget);
+  registerWidget(WeeklyResetTimerWidget);
 
   // Custom
   registerWidget(CustomCommandWidget);

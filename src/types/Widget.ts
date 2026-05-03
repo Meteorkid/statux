@@ -20,6 +20,14 @@ export interface SpeedMetricsCollection {
   windowed: Record<string, SpeedMetrics>;
 }
 
+/** Usage 数据（来自 rate_limits 或 Anthropic API） */
+export interface UsageData {
+  sessionUsage: number | null;
+  sessionResetAt: string | null;
+  weeklyUsage: number | null;
+  weeklyResetAt: string | null;
+}
+
 /** 渲染上下文 — 所有 widget 共享 */
 export interface RenderContext {
   data: StatusJSON;
@@ -28,6 +36,7 @@ export interface RenderContext {
   windowedSpeedMetrics: Record<string, SpeedMetrics> | null;
   sessionDuration: string | null;
   terminalWidth: number;
+  usageData: UsageData | null;
 }
 
 /** Widget 配置项 */
