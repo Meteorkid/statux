@@ -15,7 +15,7 @@ function getMemoryInfo(): { used: number; total: number } | null {
       const vmStat = execSync("vm_stat", { encoding: "utf-8", timeout: 2000 });
       const pageSize = 16384; // Apple Silicon page size
       const parse = (label: string): number => {
-        const match = vmStat.match(new RegExp(`${label}\\s+(\\d+)`));
+        const match = vmStat.match(new RegExp(`${label}:?\\s+(\\d+)`));
         return match ? parseInt(match[1]!) * pageSize : 0;
       };
       const active = parse("Pages active");

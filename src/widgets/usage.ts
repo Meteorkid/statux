@@ -57,7 +57,7 @@ export const RateLimitTimerWidget: Widget = {
     const rateLimit = ctx.data.rate_limits?.five_hour;
     if (!rateLimit?.resets_at) return null;
 
-    const resetTime = new Date(rateLimit.resets_at).getTime();
+    const resetTime = new Date(rateLimit.resets_at * 1000).getTime();
     const now = Date.now();
     const remaining = resetTime - now;
 

@@ -16,9 +16,17 @@ interface TranscriptEntry {
   };
 }
 
-/** 解析 JSONL 文件，返回所有条目 */
-function parseJsonl(filePath: string): TranscriptEntry[] {
+/** 解析 JSONL 文件，返回所有条目（带内存缓存） */
+const parseCache = new Map<string, { mtime: number; entries: TranscriptEntry[] }>();
+
+export function parseJsonl(filePath: string): TranscriptEntry[] {
   if (!existsSync(filePath)) return [];
+
+  const { statSync } = require("fs");
+  const mtime = statSync(filePath).mtimeMs;
+  const cached = parseCache.get(filePath);
+  if (cached && cached.mtime === mtime) return cached.entries;
+
   const content = readFileSync(filePath, "utf-8");
   const entries: TranscriptEntry[] = [];
   for (const line of content.split("\n")) {
@@ -30,17 +38,22 @@ function parseJsonl(filePath: string): TranscriptEntry[] {
       // 跳过无效行
     }
   }
+
+  parseCache.set(filePath, { mtime, entries });
   return entries;
 }
 
 /** 获取 token 指标 — 处理流式去重 */
-export function getTokenMetrics(transcriptPath: string): TokenMetrics | null {
-  const entries = parseJsonl(transcriptPath);
+export function getTokenMetrics(transcriptPath: string): TokenMetrics | null;
+export function getTokenMetrics(entries: TranscriptEntry[]): TokenMetrics | null;
+export function getTokenMetrics(pathOrEntries: string | TranscriptEntry[]): TokenMetrics | null {
+  const entries = typeof pathOrEntries === "string" ? parseJsonl(pathOrEntries) : pathOrEntries;
   if (entries.length === 0) return null;
 
   let inputTokens = 0;
   let outputTokens = 0;
-  let cachedTokens = 0;
+  let cacheCreationTokens = 0;
+  let cacheReadTokens = 0;
   let contextLength = 0;
 
   // 按时间戳排序
@@ -49,8 +62,6 @@ export function getTokenMetrics(transcriptPath: string): TokenMetrics | null {
     .sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
 
   // 跟踪已处理的流式条目，避免重复计算
-  // 策略：对于同一时间窗口内的连续 assistant 条目，
-  // 只计算 stop_reason 非 null 的条目 + 最后一个条目
   const finalized: TranscriptEntry[] = [];
   let lastAssistant: TranscriptEntry | null = null;
 
@@ -61,7 +72,6 @@ export function getTokenMetrics(transcriptPath: string): TokenMetrics | null {
     lastAssistant = entry;
   }
 
-  // 加上最后一个未完成的条目（如果有）
   if (lastAssistant && !finalized.includes(lastAssistant)) {
     finalized.push(lastAssistant);
   }
@@ -70,10 +80,10 @@ export function getTokenMetrics(transcriptPath: string): TokenMetrics | null {
     const usage = entry.message!.usage!;
     inputTokens += usage.input_tokens || 0;
     outputTokens += usage.output_tokens || 0;
-    cachedTokens += (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0);
+    cacheCreationTokens += usage.cache_creation_input_tokens || 0;
+    cacheReadTokens += usage.cache_read_input_tokens || 0;
   }
 
-  // 上下文长度 = 最后一个主链条目的 input + cache_read + cache_creation
   const mainChainEntries = entries
     .filter((e) => e.type === "assistant" && !e.isSidechain && e.message?.usage)
     .sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
@@ -87,18 +97,23 @@ export function getTokenMetrics(transcriptPath: string): TokenMetrics | null {
       (usage.cache_creation_input_tokens || 0);
   }
 
+  const cachedTokens = cacheCreationTokens + cacheReadTokens;
   return {
     inputTokens,
     outputTokens,
     cachedTokens,
+    cacheCreationTokens,
+    cacheReadTokens,
     totalTokens: inputTokens + outputTokens + cachedTokens,
     contextLength,
   };
 }
 
 /** 获取会话时长 */
-export function getSessionDuration(transcriptPath: string): string | null {
-  const entries = parseJsonl(transcriptPath);
+export function getSessionDuration(transcriptPath: string): string | null;
+export function getSessionDuration(entries: TranscriptEntry[]): string | null;
+export function getSessionDuration(pathOrEntries: string | TranscriptEntry[]): string | null {
+  const entries = typeof pathOrEntries === "string" ? parseJsonl(pathOrEntries) : pathOrEntries;
   if (entries.length === 0) return null;
 
   const timestamps = entries
@@ -124,9 +139,17 @@ export function getSessionDuration(transcriptPath: string): string | null {
 /** 获取速度指标 */
 export function getSpeedMetricsCollection(
   transcriptPath: string,
+  options?: { windowSeconds?: number[] }
+): SpeedMetricsCollection | null;
+export function getSpeedMetricsCollection(
+  entries: TranscriptEntry[],
+  options?: { windowSeconds?: number[] }
+): SpeedMetricsCollection | null;
+export function getSpeedMetricsCollection(
+  pathOrEntries: string | TranscriptEntry[],
   options: { windowSeconds?: number[] } = {}
 ): SpeedMetricsCollection | null {
-  const entries = parseJsonl(transcriptPath);
+  const entries = typeof pathOrEntries === "string" ? parseJsonl(pathOrEntries) : pathOrEntries;
   if (entries.length === 0) return null;
 
   const assistantEntries = entries
@@ -135,7 +158,6 @@ export function getSpeedMetricsCollection(
 
   if (assistantEntries.length === 0) return null;
 
-  // 计算总 tokens 和总时间
   let totalTokens = 0;
   const tokenTimestamps: { tokens: number; time: number }[] = [];
 
@@ -148,7 +170,6 @@ export function getSpeedMetricsCollection(
     }
   }
 
-  // 会话平均速度
   const firstTime = new Date(assistantEntries[0]!.timestamp || "").getTime();
   const lastTime = new Date(
     assistantEntries[assistantEntries.length - 1]!.timestamp || ""
@@ -158,7 +179,6 @@ export function getSpeedMetricsCollection(
     tokensPerSecond: durationSec > 0 ? totalTokens / durationSec : 0,
   };
 
-  // 窗口速度
   const windowed: Record<string, SpeedMetrics> = {};
   const now = Date.now();
 
