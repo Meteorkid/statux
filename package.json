@@ -1,13 +1,38 @@
 {
-  "name": "statux",
+  "name": "@statux/cli",
   "version": "0.1.0",
   "description": "AI Agent status display for Claude Code and iTerm2",
   "type": "module",
   "bin": {
     "statux": "./src/cli.ts"
   },
+  "files": [
+    "src/",
+    "iterm2/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "claude-code",
+    "iterm2",
+    "statusline",
+    "status-bar",
+    "ai-agent",
+    "powerline",
+    "terminal"
+  ],
+  "author": "meteor0425",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/meteor0425/statux.git"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "scripts": {
     "start": "bun src/cli.ts",
+    "prepublishOnly": "bun run typecheck",
     "build": "bun scripts/build.ts",
     "build:local": "bun build --compile --outfile dist/statux src/cli.ts",
     "test": "bun test",
