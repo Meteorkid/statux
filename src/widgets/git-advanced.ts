@@ -18,10 +18,9 @@ export const GitRootDirWidget: Widget = {
   defaultColor: "blue",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const root = gitExec("git rev-parse --show-toplevel", ctx.data.cwd || process.cwd());
-    if (!root) return null;
-    const name = root.split("/").pop() || root;
-    return colorize(name, item.color || this.defaultColor, item.bold);
+    const info = ctx.gitInfo;
+    if (!info?.rootDir) return null;
+    return colorize(info.rootDir, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -33,20 +32,13 @@ export const GitAheadBehindWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const output = gitExec("git rev-list --left-right --count HEAD...@{upstream}", cwd);
-    if (!output) return null;
+    const info = ctx.gitInfo;
+    if (!info || (info.ahead === 0 && info.behind === 0)) return null;
 
-    const parts = output.split(/\s+/);
-    const ahead = parseInt(parts[0] || "0");
-    const behind = parseInt(parts[1] || "0");
-
-    if (ahead === 0 && behind === 0) return null;
-
-    const parts2: string[] = [];
-    if (ahead > 0) parts2.push(`↑${ahead}`);
-    if (behind > 0) parts2.push(`↓${behind}`);
-    return colorize(parts2.join(" "), item.color || this.defaultColor, item.bold);
+    const parts: string[] = [];
+    if (info.ahead > 0) parts.push(`↑${info.ahead}`);
+    if (info.behind > 0) parts.push(`↓${info.behind}`);
+    return colorize(parts.join(" "), item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -58,11 +50,9 @@ export const GitConflictsWidget: Widget = {
   defaultColor: "red",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const output = gitExec("git diff --name-only --diff-filter=U", ctx.data.cwd || process.cwd());
-    if (!output) return null;
-    const count = output.split("\n").filter((l) => l.trim()).length;
-    if (count === 0) return null;
-    return colorize(`⚡${count}`, item.color || this.defaultColor, item.bold);
+    const info = ctx.gitInfo;
+    if (!info || info.conflicts === 0) return null;
+    return colorize(`⚡${info.conflicts}`, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -74,9 +64,9 @@ export const GitShaWidget: Widget = {
   defaultColor: "gray",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const sha = gitExec("git rev-parse --short HEAD", ctx.data.cwd || process.cwd());
-    if (!sha) return null;
-    return colorize(sha, item.color || this.defaultColor, item.bold);
+    const info = ctx.gitInfo;
+    if (!info?.sha) return null;
+    return colorize(info.sha, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -88,22 +78,19 @@ export const GitOriginWidget: Widget = {
   defaultColor: "blue",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const url = gitExec("git remote get-url origin", ctx.data.cwd || process.cwd());
-    if (!url) return null;
+    const info = ctx.gitInfo;
+    if (!info?.origin) return null;
 
-    // 解析 GitHub/GitLab owner/repo
-    const match = url.match(/[:/]([^/]+)\/([^/.]+?)(?:\.git)?$/);
-    if (!match) return null;
-
-    const owner = match[1];
-    const repo = match[2];
     const format = (item.metadata?.format as string) || "owner/repo";
+    const parts = info.origin.split("/");
+    const owner = parts[0];
+    const repo = parts[1];
 
     let text: string;
     switch (format) {
       case "owner": text = owner!; break;
       case "repo": text = repo!; break;
-      default: text = `${owner}/${repo}`; break;
+      default: text = info.origin; break;
     }
     return colorize(text, item.color || this.defaultColor, item.bold);
   },
@@ -134,18 +121,9 @@ export const GitWorktreeWidget: Widget = {
   defaultColor: "magenta",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const gitDir = gitExec("git rev-parse --git-dir", cwd);
-    if (!gitDir) return null;
-
-    // 如果是 .git/worktrees/xxx 格式，提取 worktree 名称
-    const wtMatch = gitDir.match(/\.git\/worktrees\/(.+)$/);
-    if (wtMatch) {
-      return colorize(wtMatch[1]!, item.color || this.defaultColor, item.bold);
-    }
-
-    // 普通仓库不显示
-    return null;
+    const info = ctx.gitInfo;
+    if (!info?.worktree) return null;
+    return colorize(info.worktree, item.color || this.defaultColor, item.bold);
   },
 };
 

@@ -1,16 +1,5 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { execSync } from "child_process";
-
-function countOutput(cmd: string, cwd: string): number {
-  try {
-    const output = execSync(cmd, { encoding: "utf-8", cwd, timeout: 3000 }).trim();
-    if (!output) return 0;
-    return output.split("\n").filter((l) => l.trim()).length;
-  } catch {
-    return 0;
-  }
-}
 
 export const GitStagedFilesWidget: Widget = {
   type: "git-staged-files",
@@ -20,9 +9,9 @@ export const GitStagedFilesWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const count = countOutput("git diff --cached --name-only", ctx.data.cwd || process.cwd());
-    if (count === 0) return null;
-    return colorize(`S:${count}`, item.color || this.defaultColor, item.bold);
+    const info = ctx.gitInfo;
+    if (!info || info.stagedFiles === 0) return null;
+    return colorize(`S:${info.stagedFiles}`, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -34,9 +23,9 @@ export const GitUnstagedFilesWidget: Widget = {
   defaultColor: "yellow",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const count = countOutput("git diff --name-only", ctx.data.cwd || process.cwd());
-    if (count === 0) return null;
-    return colorize(`U:${count}`, item.color || this.defaultColor, item.bold);
+    const info = ctx.gitInfo;
+    if (!info || info.unstagedFiles === 0) return null;
+    return colorize(`U:${info.unstagedFiles}`, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -48,9 +37,9 @@ export const GitUntrackedFilesWidget: Widget = {
   defaultColor: "gray",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const count = countOutput("git ls-files --others --exclude-standard", ctx.data.cwd || process.cwd());
-    if (count === 0) return null;
-    return colorize(`?${count}`, item.color || this.defaultColor, item.bold);
+    const info = ctx.gitInfo;
+    if (!info || info.untrackedFiles === 0) return null;
+    return colorize(`?${info.untrackedFiles}`, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -62,14 +51,9 @@ export const GitCleanStatusWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    try {
-      const status = execSync("git status --porcelain", { encoding: "utf-8", cwd, timeout: 3000 }).trim();
-      const isClean = status.length === 0;
-      const text = isClean ? "✓ clean" : "✗ dirty";
-      return colorize(text, item.color || (isClean ? "green" : "red"), item.bold);
-    } catch {
-      return null;
-    }
+    const info = ctx.gitInfo;
+    if (!info) return null;
+    const text = info.isClean ? "✓ clean" : "✗ dirty";
+    return colorize(text, item.color || (info.isClean ? "green" : "red"), item.bold);
   },
 };

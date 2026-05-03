@@ -4,8 +4,9 @@ import type { RenderContext } from "./types/Widget";
 import { loadConfig } from "./config";
 import { registerAllWidgets } from "./widgets";
 import { renderStatusLines } from "./render/pipeline";
-import { getTokenMetrics, getSessionDuration, getSpeedMetricsCollection } from "./data/jsonl";
+import { parseJsonl, getTokenMetrics, getSessionDuration, getSpeedMetricsCollection } from "./data/jsonl";
 import { fetchUsageData, extractUsageFromRateLimits } from "./data/usage-api";
+import { collectGitInfo } from "./data/git";
 import { terminalColumns } from "./utils/terminal";
 
 /** 读取 stdin */
@@ -83,16 +84,17 @@ Usage:
   // 加载配置
   const config = loadConfig(configPath);
 
-  // 构建渲染上下文
+  // 构建渲染上下文 — 单次读取 JSONL，避免重复 I/O
   const transcriptPath = data.transcript_path;
-  const tokenMetrics = transcriptPath ? getTokenMetrics(transcriptPath) : null;
-  const sessionDuration = transcriptPath ? getSessionDuration(transcriptPath) : null;
+  const entries = transcriptPath ? parseJsonl(transcriptPath) : [];
+  const tokenMetrics = entries.length > 0 ? getTokenMetrics(entries) : null;
+  const sessionDuration = entries.length > 0 ? getSessionDuration(entries) : null;
 
   // 速度指标
   let speedMetrics = null;
   let windowedSpeedMetrics = null;
-  if (transcriptPath) {
-    const collection = getSpeedMetricsCollection(transcriptPath, { windowSeconds: [30, 60] });
+  if (entries.length > 0) {
+    const collection = getSpeedMetricsCollection(entries, { windowSeconds: [30, 60] });
     if (collection) {
       speedMetrics = collection.sessionAverage;
       windowedSpeedMetrics = collection.windowed;
@@ -103,6 +105,10 @@ Usage:
   const rateLimitsUsage = extractUsageFromRateLimits(data.rate_limits);
   const usageData = await fetchUsageData(rateLimitsUsage);
 
+  // 预采集 Git 信息 — 单次调用替代 widget 各自 spawn 子进程
+  const cwd = data.cwd || data.workspace?.current_dir;
+  const gitInfo = collectGitInfo(cwd);
+
   const ctx: RenderContext = {
     data,
     tokenMetrics,
@@ -111,6 +117,7 @@ Usage:
     sessionDuration,
     terminalWidth: terminalColumns(),
     usageData,
+    gitInfo,
   };
 
   // 渲染

@@ -30,6 +30,28 @@ export interface UsageData {
   weeklyResetAt: string | null;
 }
 
+/** Git 仓库信息 — 预采集，所有 git widget 共享 */
+export interface GitInfo {
+  branch: string;
+  staged: number;
+  unstaged: number;
+  untracked: number;
+  ahead: number;
+  behind: number;
+  insertions: number;
+  deletions: number;
+  rootDir: string | null;
+  sha: string | null;
+  origin: string | null; // owner/repo
+  conflicts: number;
+  worktree: string | null;
+  isClean: boolean;
+  // file counts
+  stagedFiles: number;
+  unstagedFiles: number;
+  untrackedFiles: number;
+}
+
 /** 渲染上下文 — 所有 widget 共享 */
 export interface RenderContext {
   data: StatusJSON;
@@ -39,6 +61,7 @@ export interface RenderContext {
   sessionDuration: string | null;
   terminalWidth: number;
   usageData: UsageData | null;
+  gitInfo: GitInfo | null;
 }
 
 /** Widget 配置项 */

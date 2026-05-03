@@ -13,7 +13,7 @@ function getDefaultConfig(): Config {
       [
         { id: "model", type: "model", label: "mdl", color: "orange", merge: "no-padding" },
         { id: "s1", type: "separator", color: "white", merge: "no-padding", metadata: { separator: " │ " } },
-        { id: "think", type: "thinking-effort", color: "green", merge: "no-padding" },
+        { id: "think", type: "thinking-effort", label: "think", color: "green", merge: "no-padding" },
         { id: "s2", type: "separator", color: "white", merge: "no-padding", metadata: { separator: " │ " } },
         { id: "mem", type: "free-memory", color: "yellow", merge: "no-padding" },
         { id: "s3", type: "separator", color: "white", merge: "no-padding", metadata: { separator: " │ " } },

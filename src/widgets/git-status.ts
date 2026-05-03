@@ -1,6 +1,5 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { getGitStatus } from "../data/git";
 
 export const GitStatusWidget: Widget = {
   type: "git-status",
@@ -10,16 +9,15 @@ export const GitStatusWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || ctx.data.workspace?.current_dir;
-    const status = getGitStatus(cwd);
-    if (!status) return null;
+    const info = ctx.gitInfo;
+    if (!info) return null;
 
     const parts: string[] = [];
-    if (status.staged > 0) parts.push(colorize(`+${status.staged}`, "green"));
-    if (status.unstaged > 0) parts.push(colorize(`~${status.unstaged}`, "yellow"));
-    if (status.untracked > 0) parts.push(colorize(`?${status.untracked}`, "gray"));
-    if (status.ahead > 0) parts.push(colorize(`↑${status.ahead}`, "cyan"));
-    if (status.behind > 0) parts.push(colorize(`↓${status.behind}`, "red"));
+    if (info.staged > 0) parts.push(colorize(`+${info.staged}`, "green"));
+    if (info.unstaged > 0) parts.push(colorize(`~${info.unstaged}`, "yellow"));
+    if (info.untracked > 0) parts.push(colorize(`?${info.untracked}`, "gray"));
+    if (info.ahead > 0) parts.push(colorize(`↑${info.ahead}`, "cyan"));
+    if (info.behind > 0) parts.push(colorize(`↓${info.behind}`, "red"));
 
     if (parts.length === 0) return null;
     return parts.join(" ");

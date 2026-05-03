@@ -1,6 +1,5 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { getGitBranch } from "../data/git";
 
 export const GitBranchWidget: Widget = {
   type: "git-branch",
@@ -10,13 +9,12 @@ export const GitBranchWidget: Widget = {
   defaultColor: "magenta",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || ctx.data.workspace?.current_dir;
-    const branch = getGitBranch(cwd);
-    if (!branch) return null;
+    const info = ctx.gitInfo;
+    if (!info?.branch) return null;
 
     // 如果有 worktree 信息，优先使用
     const wt = ctx.data.worktree;
-    const displayBranch = wt?.branch || branch;
+    const displayBranch = wt?.branch || info.branch;
 
     return colorize(displayBranch, item.color || this.defaultColor, item.bold);
   },
