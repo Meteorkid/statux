@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/meteor0425/statux.git"
+    "url": "git+https://github.com/Meteorkid/statux.git"
   },
   "engines": {
     "bun": ">=1.0.0"
