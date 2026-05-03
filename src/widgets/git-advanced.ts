@@ -1,0 +1,172 @@
+import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
+import { colorize } from "../render/ansi";
+import { execSync } from "child_process";
+
+function gitExec(cmd: string, cwd: string): string | null {
+  try {
+    return execSync(cmd, { encoding: "utf-8", cwd, timeout: 3000 }).trim();
+  } catch {
+    return null;
+  }
+}
+
+export const GitRootDirWidget: Widget = {
+  type: "git-root-dir",
+  category: "git",
+  displayName: "Git Root Dir",
+  description: "Git 仓库根目录",
+  defaultColor: "blue",
+
+  render(item: WidgetItem, ctx: RenderContext): string | null {
+    const root = gitExec("git rev-parse --show-toplevel", ctx.data.cwd || process.cwd());
+    if (!root) return null;
+    const name = root.split("/").pop() || root;
+    return colorize(name, item.color || this.defaultColor, item.bold);
+  },
+};
+
+export const GitAheadBehindWidget: Widget = {
+  type: "git-ahead-behind",
+  category: "git",
+  displayName: "Git Ahead/Behind",
+  description: "相对 upstream 的 ahead/behind",
+  defaultColor: "cyan",
+
+  render(item: WidgetItem, ctx: RenderContext): string | null {
+    const cwd = ctx.data.cwd || process.cwd();
+    const output = gitExec("git rev-list --left-right --count HEAD...@{upstream}", cwd);
+    if (!output) return null;
+
+    const parts = output.split(/\s+/);
+    const ahead = parseInt(parts[0] || "0");
+    const behind = parseInt(parts[1] || "0");
+
+    if (ahead === 0 && behind === 0) return null;
+
+    const parts2: string[] = [];
+    if (ahead > 0) parts2.push(`↑${ahead}`);
+    if (behind > 0) parts2.push(`↓${behind}`);
+    return colorize(parts2.join(" "), item.color || this.defaultColor, item.bold);
+  },
+};
+
+export const GitConflictsWidget: Widget = {
+  type: "git-conflicts",
+  category: "git",
+  displayName: "Git Conflicts",
+  description: "冲突文件数",
+  defaultColor: "red",
+
+  render(item: WidgetItem, ctx: RenderContext): string | null {
+    const output = gitExec("git diff --name-only --diff-filter=U", ctx.data.cwd || process.cwd());
+    if (!output) return null;
+    const count = output.split("\n").filter((l) => l.trim()).length;
+    if (count === 0) return null;
+    return colorize(`⚡${count}`, item.color || this.defaultColor, item.bold);
+  },
+};
+
+export const GitShaWidget: Widget = {
+  type: "git-sha",
+  category: "git",
+  displayName: "Git SHA",
+  description: "当前 commit SHA",
+  defaultColor: "gray",
+
+  render(item: WidgetItem, ctx: RenderContext): string | null {
+    const sha = gitExec("git rev-parse --short HEAD", ctx.data.cwd || process.cwd());
+    if (!sha) return null;
+    return colorize(sha, item.color || this.defaultColor, item.bold);
+  },
+};
+
+export const GitOriginWidget: Widget = {
+  type: "git-origin",
+  category: "git",
+  displayName: "Git Origin",
+  description: "origin 远程地址 (owner/repo)",
+  defaultColor: "blue",
+
+  render(item: WidgetItem, ctx: RenderContext): string | null {
+    const url = gitExec("git remote get-url origin", ctx.data.cwd || process.cwd());
+    if (!url) return null;
+
+    // 解析 GitHub/GitLab owner/repo
+    const match = url.match(/[:/]([^/]+)\/([^/.]+?)(?:\.git)?$/);
+    if (!match) return null;
+
+    const owner = match[1];
+    const repo = match[2];
+    const format = (item.metadata?.format as string) || "owner/repo";
+
+    let text: string;
+    switch (format) {
+      case "owner": text = owner!; break;
+      case "repo": text = repo!; break;
+      default: text = `${owner}/${repo}`; break;
+    }
+    return colorize(text, item.color || this.defaultColor, item.bold);
+  },
+};
+
+export const GitIsForkWidget: Widget = {
+  type: "git-is-fork",
+  category: "git",
+  displayName: "Git Is Fork",
+  description: "是否为 fork 仓库",
+  defaultColor: "yellow",
+
+  render(item: WidgetItem, ctx: RenderContext): string | null {
+    const cwd = ctx.data.cwd || process.cwd();
+    const output = gitExec("gh repo view --json isFork -q .isFork 2>/dev/null", cwd);
+    if (output === null) return null;
+    const isFork = output === "true";
+    if (!isFork) return null;
+    return colorize("fork", item.color || this.defaultColor, item.bold);
+  },
+};
+
+export const GitWorktreeWidget: Widget = {
+  type: "git-worktree",
+  category: "git",
+  displayName: "Git Worktree",
+  description: "当前 worktree 名称",
+  defaultColor: "magenta",
+
+  render(item: WidgetItem, ctx: RenderContext): string | null {
+    const cwd = ctx.data.cwd || process.cwd();
+    const gitDir = gitExec("git rev-parse --git-dir", cwd);
+    if (!gitDir) return null;
+
+    // 如果是 .git/worktrees/xxx 格式，提取 worktree 名称
+    const wtMatch = gitDir.match(/\.git\/worktrees\/(.+)$/);
+    if (wtMatch) {
+      return colorize(wtMatch[1]!, item.color || this.defaultColor, item.bold);
+    }
+
+    // 普通仓库不显示
+    return null;
+  },
+};
+
+export const GitPrWidget: Widget = {
+  type: "git-pr",
+  category: "git",
+  displayName: "Git PR",
+  description: "当前分支的 Pull Request 链接",
+  defaultColor: "cyan",
+
+  render(item: WidgetItem, ctx: RenderContext): string | null {
+    const cwd = ctx.data.cwd || process.cwd();
+
+    // 尝试 GitHub CLI
+    let output = gitExec("gh pr view --json number,title,state --jq '\"#\" + (.number|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd);
+    if (output) return colorize(output, item.color || this.defaultColor, item.bold);
+
+    // 尝试 GitLab CLI
+    output = gitExec("glab mr view --json iid,title,state --jq '\"!\" + (.iid|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd);
+    if (output) return colorize(output, item.color || this.defaultColor, item.bold);
+
+    return null;
+  },
+};
