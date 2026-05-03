@@ -37,7 +37,7 @@ function getMemoryInfo(): { used: number; total: number } | null {
     // Linux/其他
     const total = totalmem();
     const { freemem } = require("os");
-    return { used: total - freem(), total };
+    return { used: total - freemem(), total };
   } catch {
     return null;
   }

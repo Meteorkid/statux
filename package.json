@@ -1,6 +1,6 @@
 {
   "name": "@statux/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI Agent status display for Claude Code and iTerm2",
   "type": "module",
   "bin": {
