@@ -15,11 +15,13 @@ export const TokensInputWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    // 优先从 StatusJSON 获取，fallback 到 JSONL
+    // 取两个数据源的较大值（token 单调递增，压缩后更准确）
     const fromData = ctx.data.context_window?.total_input_tokens;
     const fromJsonl = ctx.tokenMetrics?.inputTokens;
-    const count = fromData ?? fromJsonl;
-    if (count == null) return null;
+    const a = fromData ?? 0;
+    const b = fromJsonl ?? 0;
+    const count = Math.max(a, b);
+    if (count === 0 && fromData == null && fromJsonl == null) return null;
     return colorize(`in:${formatTokens(count)}`, item.color || this.defaultColor, item.bold);
   },
 };
@@ -34,8 +36,10 @@ export const TokensOutputWidget: Widget = {
   render(item: WidgetItem, ctx: RenderContext): string | null {
     const fromData = ctx.data.context_window?.total_output_tokens;
     const fromJsonl = ctx.tokenMetrics?.outputTokens;
-    const count = fromData ?? fromJsonl;
-    if (count == null) return null;
+    const a = fromData ?? 0;
+    const b = fromJsonl ?? 0;
+    const count = Math.max(a, b);
+    if (count === 0 && fromData == null && fromJsonl == null) return null;
     return colorize(`out:${formatTokens(count)}`, item.color || this.defaultColor, item.bold);
   },
 };
@@ -64,11 +68,9 @@ export const TokensTotalWidget: Widget = {
   defaultColor: "white",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const input = ctx.tokenMetrics?.inputTokens ?? ctx.data.context_window?.total_input_tokens;
-    const output = ctx.tokenMetrics?.outputTokens ?? ctx.data.context_window?.total_output_tokens;
-    if (input == null && output == null) return null;
-    const total = (input || 0) + (output || 0);
-    if (total === 0) return null;
-    return colorize(`total:${formatTokens(total)}`, item.color || this.defaultColor, item.bold);
+    const a = ctx.tokenMetrics?.inputTokens ?? ctx.data.context_window?.total_input_tokens ?? 0;
+    const b = ctx.tokenMetrics?.outputTokens ?? ctx.data.context_window?.total_output_tokens ?? 0;
+    if (a === 0 && b === 0) return null;
+    return colorize(`total:${formatTokens(a + b)}`, item.color || this.defaultColor, item.bold);
   },
 };

@@ -11,6 +11,8 @@ function getDefaultConfig(): Config {
     version: 1,
     lines: [
       [
+        { id: "tool", type: "tool-indicator", merge: "no-padding" },
+        { id: "s0", type: "separator", color: "white", merge: "no-padding", metadata: { separator: " " } },
         { id: "model", type: "model", label: "mdl", color: "orange", merge: "no-padding" },
         { id: "s1", type: "separator", color: "white", merge: "no-padding", metadata: { separator: " │ " } },
         { id: "think", type: "thinking-effort", label: "think", color: "green", merge: "no-padding" },

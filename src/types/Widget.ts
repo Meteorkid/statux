@@ -1,4 +1,5 @@
 import type { StatusJSON } from "./StatusJSON";
+import type { Tool } from "./Tool";
 
 /** Token 指标 */
 export interface TokenMetrics {
@@ -62,6 +63,7 @@ export interface RenderContext {
   terminalWidth: number;
   usageData: UsageData | null;
   gitInfo: GitInfo | null;
+  tool: Tool | null; // 数据来源工具
 }
 
 /** Widget 配置项 */

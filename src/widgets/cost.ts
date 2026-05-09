@@ -12,7 +12,7 @@ export const CostWidget: Widget = {
   type: "cost",
   category: "session",
   displayName: "Cost",
-  description: "会话费用 (基于当前模型定价 + token 指标本地计算)",
+  description: "会话累计费用 (同时参考 statusLine 与 JSONL，取较大值确保压缩上下文后不丢失)",
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
@@ -24,31 +24,39 @@ export const CostWidget: Widget = {
     if (modelId) {
       const pricing = getModelPricing(modelId);
       if (pricing) {
-        // 优先：statusLine 的 total_input/total_output_tokens（累计、权威）
+        // 同时计算两个数据源的费用，取较大值
+        // — token 数是单调递增的，更大的值更接近真实的会话累计
+        let costFromStatusLine: number | null = null;
+        let costFromJsonl: number | null = null;
+
+        // 数据源 1：statusLine context_window
         const cw = ctx.data.context_window;
         const totalIn = cw?.total_input_tokens;
         const totalOut = cw?.total_output_tokens;
-
         if (totalIn != null || totalOut != null) {
-          cost = computeCostFromTokens(
+          costFromStatusLine = computeCostFromTokens(
             totalIn ?? 0,
             totalOut ?? 0,
-            0, // statusLine 不单独提供 cache tokens
+            0,
             0,
             pricing
           );
-          isEstimated = true;
         }
 
-        // 回退：JSONL 解析的 tokenMetrics（累计）
-        if (cost == null && ctx.tokenMetrics) {
-          cost = computeCostFromTokens(
+        // 数据源 2：JSONL 解析（含 cache tokens）
+        if (ctx.tokenMetrics) {
+          costFromJsonl = computeCostFromTokens(
             ctx.tokenMetrics.inputTokens,
             ctx.tokenMetrics.outputTokens,
             ctx.tokenMetrics.cacheCreationTokens,
             ctx.tokenMetrics.cacheReadTokens,
             pricing
           );
+        }
+
+        // 取两者较大值，确保压缩上下文后费用不会回退
+        if (costFromStatusLine != null || costFromJsonl != null) {
+          cost = Math.max(costFromStatusLine ?? 0, costFromJsonl ?? 0);
           isEstimated = true;
         }
       }
