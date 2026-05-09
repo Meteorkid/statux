@@ -1,12 +1,12 @@
 # statux
 
-> AI Agent status display for Claude Code and iTerm2
+> AI Agent status display for Claude Code, Codex (OpenAI), and iTerm2
 
 [![npm](https://img.shields.io/npm/v/@statux/cli)](https://www.npmjs.com/package/@statux/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)]()
 
-statux 是一个终端状态显示工具，为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 和 [iTerm2](https://iterm2.com/) 提供 AI Agent 的实时状态信息。支持 65 个可配置 Widget、Powerline 渲染、交互式 TUI 配置界面。
+statux 是一个终端状态显示工具，为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex (OpenAI)](https://github.com/openai/codex) 和 [iTerm2](https://iterm2.com/) 提供 AI Agent 的实时状态信息。支持 66 个可配置 Widget、Powerline 渲染、交互式 TUI 配置界面。
 
 ```
 mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░░] 82% │ len:85k
@@ -45,8 +45,9 @@ cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
 
 ## 功能特性
 
-- **65 个 Widget** — 覆盖模型、上下文、Token、Git、会话、费用、速率限制、Jujutsu VCS 等
+- **66 个 Widget** — 覆盖模型、上下文、Token、Git、会话、费用、速率限制、Jujutsu VCS 等
 - **双通道输出** — Claude Code statusLine + iTerm2 状态栏
+- **Codex 支持** — 自动检测 Codex/Claude Code 进程，通过 SQLite + hooks bridge 获取会话数据
 - **Powerline 渲染** — 内置 dark/ocean 主题，箭头分隔符
 - **TUI 配置界面** — 基于 Ink (React for CLI) 的交互式配置，支持搜索、排序、预览
 - **Anthropic Usage API** — 实时获取 session/weekly 用量数据
@@ -154,6 +155,61 @@ statux --setup
 
 ---
 
+## Codex (OpenAI) 集成
+
+statux 通过双重数据源支持 Codex：
+
+### 1. SQLite 直接读取（自动）
+
+当 Codex 进程运行时，statux 自动从 `~/.codex/state_5.sqlite` 读取活跃线程数据。
+
+### 2. statux-bridge 插件（推荐）
+
+通过 Codex hooks API 获取 `transcript_path`，解析 transcript JSONL 获取精确的 per-turn token 数据，实现与 Claude Code 模式接近的指标覆盖。
+
+```bash
+# 插件目录：~/.codex/plugins/statux-bridge/
+# hooks.json：SessionStart + Stop hooks
+# 数据流：hook → bridge JSON → transcript JSONL → token 指标
+```
+
+启用方式：
+
+```toml
+# ~/.codex/config.toml
+[features]
+hooks = true
+
+[plugins."statux-bridge"]
+enabled = true
+```
+
+### 使用方式
+
+```bash
+# 单次检测（自动识别 Codex 还是 Claude Code）
+statux --oneshot
+
+# 轮询模式（持续刷新）
+statux --watch 3
+```
+
+### 指标覆盖对比
+
+| 指标 | Claude Code | Codex |
+|------|-------------|-------|
+| 模型名称 | ✅ | ✅ |
+| Token 输入/输出 | ✅ JSONL 精确值 | ✅ transcript JSONL |
+| Cache token | ✅ | ✅ |
+| 速度指标 | ✅ | ✅ |
+| 会话时长 | ✅ | ✅ |
+| Git 信息 | ✅ | ✅ (来自 SQLite) |
+| 成本估算 | ✅ | ✅ (GPT 定价表) |
+| Context window % | ✅ | ❌ (概念不同) |
+| Rate limits | ✅ | ❌ (概念不同) |
+
+---
+
 ## iTerm2 集成
 
 ### 自动安装
@@ -185,14 +241,15 @@ statux CLI → OSC 1337 自定义序列 → iTerm2 Python daemon → 状态栏 +
 
 ## Widget 目录
 
-statux 提供 65 个 Widget，分为 9 个类别。每个 Widget 都支持自定义颜色、粗体和标签。
+statux 提供 66 个 Widget，分为 9 个类别。每个 Widget 都支持自定义颜色、粗体和标签。
 
 ### Core — 核心信息
 
-8 个 Widget，显示 AI Agent 的基础状态。
+9 个 Widget，显示 AI Agent 的基础状态。
 
 | Widget | 类型 | 说明 | 输出示例 |
 |--------|------|------|---------|
+| `tool-indicator` | `tool-indicator` | 当前工具标识（CC=Claude Code, CX=Codex） | `[CC]` `[CX]` |
 | `model` | `model` | 当前使用的模型名称 | `opus-4.7` |
 | `output-style` | `output-style` | 当前输出风格 | `style:concise` |
 | `version` | `version` | Claude Code 版本号 | `v1.2.3` |
@@ -590,21 +647,26 @@ statux --tui
 ```
 statux (TypeScript/Bun)
 ├── src/
-│   ├── cli.ts                 # CLI 入口：statusLine 模式 vs TUI 模式
+│   ├── cli.ts                 # CLI 入口：statusLine/oneshot/watch/TUI 模式
 │   ├── setup.ts               # iTerm2 plugin 安装
 │   ├── types/
-│   │   ├── StatusJSON.ts      # Claude Code 输入 schema (Zod)
-│   │   ├── Widget.ts          # Widget 接口定义（含 label 字段）
+│   │   ├── StatusJSON.ts      # 输入 schema (Zod)
+│   │   ├── Widget.ts          # Widget 接口定义（含 Tool 枚举）
+│   │   ├── Tool.ts            # AI 工具进程检测
 │   │   └── Config.ts          # 配置 schema
-│   ├── widgets/               # 65 个 Widget 实现
+│   ├── widgets/               # 67 个 Widget 实现
 │   │   ├── registry.ts        # Widget 注册表
+│   │   ├── tool-indicator.ts  # 工具标识 [CC]/[CX]
 │   │   └── *.ts               # 各 Widget 文件
 │   ├── render/
-│   │   ├── pipeline.ts        # 两阶段渲染：预渲染（含 label 处理）+ 组装
-│   │   ├── ansi.ts            # ANSI 转义码工具（含 orange/pink 256 色）
-│   │   └── powerline.ts       # Powerline 箭头渲染
+│   │   ├── pipeline.ts        # 两阶段渲染
+│   │   ├── ansi.ts            # ANSI 工具
+│   │   └── powerline.ts       # Powerline 渲染
 │   ├── data/
-│   │   ├── jsonl.ts           # 解析 transcript.jsonl
+│   │   ├── jsonl.ts           # Claude Code JSONL 解析
+│   │   ├── codex.ts           # Codex SQLite + bridge + transcript 解析
+│   │   ├── claude-session.ts  # Claude Code 会话检测
+│   │   ├── model-pricing.ts   # 多模型定价表 (Anthropic/OpenAI/DeepSeek/...)
 │   │   ├── git.ts             # Git 状态采集
 │   │   └── usage-api.ts       # Anthropic Usage API 客户端
 │   ├── config.ts              # 配置加载/保存/迁移
@@ -621,11 +683,14 @@ statux (TypeScript/Bun)
 
 ```
 Claude Code → stdin(StatusJSON) → statux CLI → 解析 JSON + JSONL
-  → Widget 渲染 → stdout(ANSI) → Claude Code 显示
-                                  ↓
-                           OSC 1337 序列
-                                  ↓
-                           iTerm2 Python daemon → 状态栏 + 标签颜色
+                                                  ↓
+Codex → SQLite (state_5.sqlite)                  ↓
+     → hooks bridge (codex-bridge.json)          ↓
+     → transcript JSONL                          ↓
+                                                  ↓
+  → Widget 渲染 → stdout(ANSI) → 终端显示
+                       ↓
+                OSC 1337 序列 → iTerm2 → 状态栏 + 标签颜色
 ```
 
 ---
@@ -676,7 +741,8 @@ git push origin v0.2.0
 
 | 维度 | statux | ccstatusline |
 |------|--------|-------------|
-| Widget 数量 | 65 | 73 |
+| Widget 数量 | 66 | 73 |
+| Codex 支持 | ✅ SQLite + hooks bridge | ❌ |
 | 标签系统 | ✅ 自动 label/none 回退 | ❌ |
 | 颜色数量 | 10（含 orange/pink 256 色） | 8 |
 | Powerline 渲染 | ✅ 内置支持 | ❌ |

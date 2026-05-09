@@ -168,6 +168,42 @@ const PRICING_TABLE: { pattern: RegExp; pricing: ModelPricing; name: string }[] 
   // Doubao 通用
   { pattern: /doubao|豆包/, name: "Doubao",
     pricing: { input: 0.20, output: 0.60, cacheWrite5m: 0.20, cacheWrite1h: 0.20, cacheRead: 0.02 } },
+
+  // ── OpenAI GPT 系列 (Codex 使用) ──────────────────────────
+  // GPT-5.5 — Codex 默认模型 ($1.25/$10)
+  { pattern: /gpt-5\.5|gpt-5-5/, name: "GPT-5.5",
+    pricing: { input: 1.25, output: 10, cacheWrite5m: 1.25, cacheWrite1h: 1.25, cacheRead: 0.125 } },
+  // GPT-5 Mini ($0.25/$2) — 精确匹配必须在 gpt-5 通用之前
+  { pattern: /gpt-5[.\-]?mini/, name: "GPT-5 Mini",
+    pricing: { input: 0.25, output: 2, cacheWrite5m: 0.25, cacheWrite1h: 0.25, cacheRead: 0.025 } },
+  // GPT-5 Nano ($0.05/$0.40)
+  { pattern: /gpt-5[.\-]?nano/, name: "GPT-5 Nano",
+    pricing: { input: 0.05, output: 0.40, cacheWrite5m: 0.05, cacheWrite1h: 0.05, cacheRead: 0.005 } },
+  // GPT-5 通用 ($1.25/$10) — 精确匹配 gpt-5（不允许后跟字母数字）
+  { pattern: /gpt-5(?![a-z0-9.\-])|^gpt-5$/i, name: "GPT-5",
+    pricing: { input: 1.25, output: 10, cacheWrite5m: 1.25, cacheWrite1h: 1.25, cacheRead: 0.125 } },
+  // GPT-4.1 ($2/$8)
+  { pattern: /gpt-4\.1(?!.*mini)(?!.*nano)/, name: "GPT-4.1",
+    pricing: { input: 2, output: 8, cacheWrite5m: 2, cacheWrite1h: 2, cacheRead: 0.20 } },
+  // GPT-4.1 Mini ($0.40/$1.60)
+  { pattern: /gpt-4\.1.*mini/, name: "GPT-4.1 Mini",
+    pricing: { input: 0.40, output: 1.60, cacheWrite5m: 0.40, cacheWrite1h: 0.40, cacheRead: 0.04 } },
+  // GPT-4.1 Nano ($0.10/$0.40)
+  { pattern: /gpt-4\.1.*nano/, name: "GPT-4.1 Nano",
+    pricing: { input: 0.10, output: 0.40, cacheWrite5m: 0.10, cacheWrite1h: 0.10, cacheRead: 0.01 } },
+  // GPT-4o ($2.50/$10)
+  { pattern: /gpt-4o(?!.*mini)/, name: "GPT-4o",
+    pricing: { input: 2.50, output: 10, cacheWrite5m: 2.50, cacheWrite1h: 2.50, cacheRead: 0.25 } },
+  // GPT-4o Mini ($0.15/$0.60)
+  { pattern: /gpt-4o.*mini/, name: "GPT-4o Mini",
+    pricing: { input: 0.15, output: 0.60, cacheWrite5m: 0.15, cacheWrite1h: 0.15, cacheRead: 0.015 } },
+  // GPT 通用兜底 ($1.25/$10)
+  { pattern: /gpt/, name: "GPT",
+    pricing: { input: 1.25, output: 10, cacheWrite5m: 1.25, cacheWrite1h: 1.25, cacheRead: 0.125 } },
+
+  // ── OpenAI Codex 默认模型 (codex-default) ─────────────────
+  { pattern: /codex-default/, name: "Codex Default",
+    pricing: { input: 1.25, output: 10, cacheWrite5m: 1.25, cacheWrite1h: 1.25, cacheRead: 0.125 } },
 ];
 
 /** 根据模型 ID 匹配定价 */

@@ -39,7 +39,7 @@ import { CustomTextWidget, CustomSymbolWidget } from "./custom-text";
 import { ToolIndicatorWidget } from "./tool-indicator";
 import { JjBookmarksWidget, JjWorkspaceWidget, JjRootDirWidget, JjChangesWidget, JjInsertionsWidget, JjDeletionsWidget, JjDescriptionWidget, JjRevisionWidget } from "./jujutsu";
 
-/** 注册所有内置 widget（65 个） */
+/** 注册所有内置 widget（66 个） */
 export function registerAllWidgets(): void {
   // === Core (9) ===
   registerWidget(ModelWidget);

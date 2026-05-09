@@ -286,7 +286,8 @@ Supported tools: Claude Code, Codex (OpenAI)`);
   const config = loadConfig(configPath);
 
   // 构建渲染上下文 — 单次读取 JSONL，避免重复 I/O
-  const transcriptPath = data.transcript_path;
+  // statusLine 不一定传 transcript_path，回退到自动查找活跃会话的 JSONL
+  const transcriptPath = data.transcript_path || findActiveTranscriptPath();
   const entries = transcriptPath ? parseJsonl(transcriptPath) : [];
   const tokenMetrics = entries.length > 0 ? getTokenMetrics(entries) : null;
   const sessionDuration = entries.length > 0 ? getSessionDuration(entries) : null;
