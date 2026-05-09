@@ -1,6 +1,9 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { homedir } from "os";
 import { join } from "path";
 import { execSync } from "child_process";
+
+const HOME = process.env.HOME || homedir();
 
 const USAGE_API_URL = "https://api.anthropic.com/api/oauth/usage";
 const USAGE_API_TIMEOUT_MS = 5000;
@@ -10,7 +13,7 @@ const LOCK_TTL_MS = 30_000; // 30 seconds
 const FIVE_HOUR_MS = 5 * 60 * 60 * 1000;
 const SEVEN_DAY_MS = 7 * 24 * 60 * 60 * 1000;
 
-const CACHE_DIR = join(process.env.HOME || "~", ".cache", "statux");
+const CACHE_DIR = join(HOME, ".cache", "statux");
 const CACHE_FILE = join(CACHE_DIR, "usage.json");
 const LOCK_FILE = join(CACHE_DIR, "usage.lock");
 
@@ -78,7 +81,7 @@ function getTokenFromKeychain(): string | null {
 
 /** 从 credentials 文件获取 OAuth token */
 function getTokenFromFile(): string | null {
-  const configDir = process.env.CLAUDE_CONFIG_DIR || join(process.env.HOME || "~", ".claude");
+  const configDir = process.env.CLAUDE_CONFIG_DIR || join(HOME, ".claude");
   const credPath = join(configDir, ".credentials.json");
 
   try {

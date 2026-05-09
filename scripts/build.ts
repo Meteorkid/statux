@@ -7,6 +7,7 @@ const TARGETS = [
   { name: "statux-darwin-x64", target: "bun-darwin-x64" },
   { name: "statux-linux-x64", target: "bun-linux-x64" },
   { name: "statux-linux-arm64", target: "bun-linux-arm64" },
+  { name: "statux-windows-x64", target: "bun-windows-x64" },
 ] as const;
 
 const distDir = join(import.meta.dir, "..", "dist");

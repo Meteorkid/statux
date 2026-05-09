@@ -1,7 +1,11 @@
 import { execSync } from "child_process";
+import { homedir } from "os";
 import { join } from "path";
 import { existsSync } from "fs";
+import { getProcessList, processNameMatches } from "../utils/process";
 import type { StatusJSON } from "../types/StatusJSON";
+
+const HOME = process.env.HOME || homedir();
 
 /** 从 ps 输出中提取活跃的 Claude Code 会话信息 */
 export interface ClaudeSession {
@@ -11,36 +15,28 @@ export interface ClaudeSession {
 
 /** 查找所有 Claude Code 进程 */
 export function findClaudeProcesses(): ClaudeSession[] {
-  try {
-    const ps = execSync("ps aux", { encoding: "utf-8", timeout: 3000 });
-    const sessions: ClaudeSession[] = [];
+  const processes = getProcessList();
+  const sessions: ClaudeSession[] = [];
 
-    for (const line of ps.split("\n")) {
-      if (!/\bclaude\b/.test(line) || line.includes("brew")) continue;
-      // 只处理有 --resume 标志的会话进程
-      if (!line.includes("--resume")) continue;
+  for (const proc of processes) {
+    if (!processNameMatches(proc.command, "claude") || proc.command.includes("brew")) continue;
+    // 只处理有 --resume 标志的会话进程
+    if (!proc.command.includes("--resume")) continue;
 
-      const parts = line.trim().split(/\s+/);
-      const pid = parseInt(parts[1] || "", 10);
-      if (isNaN(pid)) continue;
-
-      // 从命令行提取 session ID
-      const resumeMatch = line.match(/--resume\s+([\w-]+)/);
-      sessions.push({
-        pid,
-        sessionId: resumeMatch ? (resumeMatch[1] ?? null) : null,
-      });
-    }
-
-    return sessions;
-  } catch {
-    return [];
+    // 从命令行提取 session ID
+    const resumeMatch = proc.command.match(/--resume\s+([\w-]+)/);
+    sessions.push({
+      pid: proc.pid,
+      sessionId: resumeMatch ? (resumeMatch[1] ?? null) : null,
+    });
   }
+
+  return sessions;
 }
 
 /** 根据 session ID 查找 transcript 文件路径 */
 export function findTranscriptPath(sessionId: string): string | null {
-  const projectsDir = join(process.env.HOME || "~", ".claude", "projects");
+  const projectsDir = join(HOME, ".claude", "projects");
 
   if (!existsSync(projectsDir)) return null;
 

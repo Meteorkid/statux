@@ -1,8 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { homedir } from "os";
 import { join } from "path";
 import { ConfigSchema, type Config } from "./types/Config";
 
-const CONFIG_DIR = join(process.env.HOME || "~", ".config", "statux");
+const HOME = process.env.HOME || homedir();
+const CONFIG_DIR = join(HOME, ".config", "statux");
 const CONFIG_FILE = join(CONFIG_DIR, "settings.json");
 
 /** 默认配置 — 三行布局 */

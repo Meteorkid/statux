@@ -1,11 +1,14 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
 import { readFileSync, existsSync } from "fs";
+import { homedir } from "os";
 import { join } from "path";
+
+const HOME = process.env.HOME || homedir();
 
 function getClaudeAccountEmail(): string | null {
   try {
-    const configDir = process.env.CLAUDE_CONFIG_DIR || join(process.env.HOME || "~", ".claude");
+    const configDir = process.env.CLAUDE_CONFIG_DIR || join(HOME, ".claude");
     const configPath = join(configDir, ".claude.json");
     if (!existsSync(configPath)) return null;
 

@@ -1,9 +1,12 @@
 import { Database } from "bun:sqlite";
+import { homedir } from "os";
 import { join } from "path";
 import { existsSync, readFileSync } from "fs";
 import type { StatusJSON } from "../types/StatusJSON";
 import type { TokenMetrics, SpeedMetrics, SpeedMetricsCollection, RenderContext, GitInfo } from "../types/Widget";
 import type { Tool } from "../types/Tool";
+
+const HOME = process.env.HOME || homedir();
 
 interface CodexThread {
   id: string;
@@ -39,8 +42,8 @@ interface CodexBridgeData {
   last_event: string;
 }
 
-const STATE_DB = join(process.env.HOME || "~", ".codex", "state_5.sqlite");
-const BRIDGE_FILE = join(process.env.HOME || "~", ".cache", "statux", "codex-bridge.json");
+const STATE_DB = join(HOME, ".codex", "state_5.sqlite");
+const BRIDGE_FILE = join(HOME, ".cache", "statux", "codex-bridge.json");
 
 /** 读取 Codex hook bridge 数据 */
 export function readCodexBridgeData(): CodexBridgeData | null {

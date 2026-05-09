@@ -1,8 +1,11 @@
 import { mkdirSync, writeFileSync, existsSync } from "fs";
+import { homedir } from "os";
 import { join } from "path";
 
+const HOME = process.env.HOME || homedir();
+
 const ITERM2_SCRIPTS_DIR = join(
-  process.env.HOME || "~",
+  HOME,
   "Library",
   "Application Support",
   "iTerm2",
@@ -97,7 +100,7 @@ export function setupIterm2(): void {
 
   // 检查 iTerm2 Scripts 目录
   const scriptsBase = join(
-    process.env.HOME || "~",
+    HOME,
     "Library",
     "Application Support",
     "iTerm2",
@@ -119,7 +122,7 @@ export function setupIterm2(): void {
   writeFileSync(pluginPath, PYTHON_PLUGIN_CONTENT, { mode: 0o755 });
 
   // 创建缓存目录
-  const cacheDir = join(process.env.HOME || "~", ".cache", "statux");
+  const cacheDir = join(HOME, ".cache", "statux");
   mkdirSync(cacheDir, { recursive: true });
 
   console.log(`iTerm2 plugin installed: ${pluginPath}`);
