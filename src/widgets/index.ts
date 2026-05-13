@@ -38,8 +38,10 @@ import { LinkWidget } from "./link";
 import { CustomTextWidget, CustomSymbolWidget } from "./custom-text";
 import { ToolIndicatorWidget } from "./tool-indicator";
 import { JjBookmarksWidget, JjWorkspaceWidget, JjRootDirWidget, JjChangesWidget, JjInsertionsWidget, JjDeletionsWidget, JjDescriptionWidget, JjRevisionWidget } from "./jujutsu";
+import { HistoryTodayWidget, HistoryWeekWidget, HistoryCostWidget } from "./history-summary";
+import { CostRateWidget, TokenRateWidget, SessionEfficiencyWidget } from "./efficiency";
 
-/** 注册所有内置 widget（66 个） */
+/** 注册所有内置 widget（72 个，含历史 3 + 效率 3） */
 export function registerAllWidgets(): void {
   // === Core (9) ===
   registerWidget(ModelWidget);
@@ -120,6 +122,16 @@ export function registerAllWidgets(): void {
   registerWidget(JjDeletionsWidget);
   registerWidget(JjDescriptionWidget);
   registerWidget(JjRevisionWidget);
+
+  // === History (3) ===
+  registerWidget(HistoryTodayWidget);
+  registerWidget(HistoryWeekWidget);
+  registerWidget(HistoryCostWidget);
+
+  // === Efficiency (3) ===
+  registerWidget(CostRateWidget);
+  registerWidget(TokenRateWidget);
+  registerWidget(SessionEfficiencyWidget);
 
   // === Layout (2) ===
   registerWidget(SeparatorWidget);

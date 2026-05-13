@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)]()
 
-statux 是一个终端状态显示工具，为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex (OpenAI)](https://github.com/openai/codex) 和 [iTerm2](https://iterm2.com/) 提供 AI Agent 的实时状态信息。支持 66 个可配置 Widget、Powerline 渲染、交互式 TUI 配置界面。
+statux 是一个终端状态显示工具，为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex (OpenAI)](https://github.com/openai/codex) 和 [iTerm2](https://iterm2.com/) 提供 AI Agent 的实时状态信息。支持 72 个可配置 Widget、Powerline 渲染、交互式 TUI 配置界面。
 
 ```
 mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░░] 82% │ len:85k
@@ -30,6 +30,8 @@ cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
   - [Git — 版本控制](#git--版本控制)
   - [Session — 会话](#session--会话)
   - [Usage — 用量统计](#usage--用量统计)
+  - [History — 历史统计](#history--历史统计)
+  - [Efficiency — 效率指标](#efficiency--效率指标)
   - [Custom — 自定义](#custom--自定义)
   - [Jujutsu — Jujutsu VCS](#jujutsu--jujutsu-vcs)
   - [Layout — 布局](#layout--布局)
@@ -45,7 +47,7 @@ cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
 
 ## 功能特性
 
-- **66 个 Widget** — 覆盖模型、上下文、Token、Git、会话、费用、速率限制、Jujutsu VCS 等
+- **72 个 Widget** — 覆盖模型、上下文、Token、Git、会话、费用、速率限制、历史统计、效率指标、Jujutsu VCS 等
 - **双通道输出** — Claude Code statusLine + iTerm2 状态栏
 - **Codex 支持** — 自动检测 Codex/Claude Code 进程，通过 SQLite + hooks bridge 获取会话数据
 - **Powerline 渲染** — 内置 dark/ocean 主题，箭头分隔符
@@ -241,7 +243,7 @@ statux CLI → OSC 1337 自定义序列 → iTerm2 Python daemon → 状态栏 +
 
 ## Widget 目录
 
-statux 提供 66 个 Widget，分为 9 个类别。每个 Widget 都支持自定义颜色、粗体和标签。
+statux 提供 72 个 Widget，分为 11 个类别。每个 Widget 都支持自定义颜色、粗体和标签。
 
 ### Core — 核心信息
 
@@ -414,6 +416,45 @@ statux 提供 66 个 Widget，分为 9 个类别。每个 Widget 都支持自定
 1. macOS Keychain: `security find-generic-password -s "Claude Code-credentials" -w`
 2. 文件: `~/.claude/.credentials.json`
 
+### History — 历史统计
+
+3 个 Widget，基于本地 SQLite 历史记录，显示累计用量和费用。
+
+| Widget | 类型 | 说明 | 输出示例 |
+|--------|------|------|---------|
+| `history-today` | `history-today` | 今日 token 用量和费用汇总 | `today: $1.23 (1.5M, 3 sess)` |
+| `history-week` | `history-week` | 本周 token 用量和费用汇总 | `week: $8.45 (12M, 15 sess)` |
+| `history-cost` | `history-cost` | 今日费用（仅金额） | `hist: $1.23` |
+
+**数据来源：** 本地 SQLite 数据库 `~/.config/statux/history.db`，每次会话自动记录。
+
+**查看历史命令：**
+
+```bash
+statux --history 7    # 最近 7 天用量统计
+statux --history 30   # 最近 30 天
+```
+
+### Efficiency — 效率指标
+
+3 个 Widget，衡量当前会话的费用和 token 吞吐效率。
+
+| Widget | 类型 | 说明 | 输出示例 |
+|--------|------|------|---------|
+| `cost-rate` | `cost-rate` | 每分钟费用（$/min） | `$0.12/min` |
+| `token-rate` | `token-rate` | 每分钟 token 吞吐率 | `8.5K/min` |
+| `session-efficiency` | `session-efficiency` | 综合效率：token 速率 + 费用 | `8.5K/min $0.35` |
+
+**`cost-rate` 颜色（随费率动态变化）：**
+
+| 费率 | 颜色 |
+|------|------|
+| < $0.5/min | 用户自定义色（默认 cyan） |
+| $0.5-$1/min | 黄色 |
+| > $1/min | 红色 |
+
+**依赖：** 需要 LiteLLM 定价数据（首次运行自动从 GitHub 拉取，缓存 24h）。
+
 ### Custom — 自定义
 
 4 个 Widget，支持用户自定义内容。
@@ -521,16 +562,18 @@ mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░
 
 配置文件路径：`~/.config/statux/settings.json`
 
-### 默认配置（三行布局）
+### 默认配置（四行布局）
 
 ```json
 {
   "version": 1,
   "lines": [
     [
+      { "id": "tool", "type": "tool-indicator", "merge": "no-padding" },
+      { "id": "s0", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " " } },
       { "id": "model", "type": "model", "label": "mdl", "color": "orange", "merge": "no-padding" },
       { "id": "s1", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "think", "type": "thinking-effort", "color": "green", "merge": "no-padding" },
+      { "id": "think", "type": "thinking-effort", "label": "think", "color": "green", "merge": "no-padding" },
       { "id": "s2", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
       { "id": "mem", "type": "free-memory", "color": "yellow", "merge": "no-padding" },
       { "id": "s3", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
@@ -557,6 +600,13 @@ mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░
       { "id": "wt", "type": "git-worktree", "label": "wt", "color": "red", "merge": "no-padding" },
       { "id": "s11", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
       { "id": "sk", "type": "skills", "label": "sk", "color": "white", "merge": "no-padding" }
+    ],
+    [
+      { "id": "htoday", "type": "history-today", "color": "red", "merge": "no-padding" },
+      { "id": "s12", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "crate", "type": "cost-rate", "label": "$/min", "color": "cyan", "merge": "no-padding" },
+      { "id": "s13", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "trate", "type": "token-rate", "label": "tok/min", "color": "magenta", "merge": "no-padding" }
     ]
   ],
   "renderMode": "normal",
@@ -654,7 +704,7 @@ statux (TypeScript/Bun)
 │   │   ├── Widget.ts          # Widget 接口定义（含 Tool 枚举）
 │   │   ├── Tool.ts            # AI 工具进程检测
 │   │   └── Config.ts          # 配置 schema
-│   ├── widgets/               # 67 个 Widget 实现
+│   ├── widgets/               # 72 个 Widget 实现
 │   │   ├── registry.ts        # Widget 注册表
 │   │   ├── tool-indicator.ts  # 工具标识 [CC]/[CX]
 │   │   └── *.ts               # 各 Widget 文件
@@ -663,10 +713,13 @@ statux (TypeScript/Bun)
 │   │   ├── ansi.ts            # ANSI 工具
 │   │   └── powerline.ts       # Powerline 渲染
 │   ├── data/
-│   │   ├── jsonl.ts           # Claude Code JSONL 解析
+│   │   ├── jsonl.ts           # Claude Code JSONL 解析（适配器）
 │   │   ├── codex.ts           # Codex SQLite + bridge + transcript 解析
+│   │   ├── transcript.ts      # 统一 transcript 解析层（NormalizedEntry）
 │   │   ├── claude-session.ts  # Claude Code 会话检测
-│   │   ├── model-pricing.ts   # 多模型定价表 (Anthropic/OpenAI/DeepSeek/...)
+│   │   ├── model-pricing.ts   # 双层定价：精选表 + LiteLLM 2200+ 模型
+│   │   ├── litellm-fetcher.ts # LiteLLM 定价数据拉取和缓存
+│   │   ├── history.ts         # SQLite 会话历史存储和查询
 │   │   ├── git.ts             # Git 状态采集
 │   │   └── usage-api.ts       # Anthropic Usage API 客户端
 │   ├── config.ts              # 配置加载/保存/迁移
@@ -741,7 +794,7 @@ git push origin v0.2.0
 
 | 维度 | statux | ccstatusline |
 |------|--------|-------------|
-| Widget 数量 | 66 | 73 |
+| Widget 数量 | 72 | 73 |
 | Codex 支持 | ✅ SQLite + hooks bridge | ❌ |
 | 标签系统 | ✅ 自动 label/none 回退 | ❌ |
 | 颜色数量 | 10（含 orange/pink 256 色） | 8 |
@@ -751,6 +804,9 @@ git push origin v0.2.0
 | iTerm2 标签颜色 | ✅ 自动变色 | ❌ |
 | Jujutsu VCS 支持 | ✅ 8 个 Widget | ❌ |
 | Anthropic Usage API | ✅ 实时用量 | ❌ |
+| LiteLLM 2200+ 模型定价 | ✅ 自动拉取+缓存 | ❌ |
+| 会话历史统计 | ✅ SQLite 本地存储 | ❌ |
+| 效率指标 | ✅ $/min, tok/min | ❌ |
 | 独立二进制 | ✅ 无依赖 | ❌ Node.js 运行时 |
 | 多行布局 | ✅ | ✅ |
 | Powerline 主题 | ✅ dark/ocean | ❌ |

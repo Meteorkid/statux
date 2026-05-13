@@ -4,6 +4,8 @@ import type { RenderContext } from "./types/Widget";
 import { loadConfig } from "./config";
 import { registerAllWidgets } from "./widgets";
 import { renderStatusLines } from "./render/pipeline";
+import { initPricingEngine, ensurePricingLoaded } from "./data/model-pricing";
+import { recordSession, getRecentSessions, getDailySummaries, getSummaryByModel, closeHistoryDb } from "./data/history";
 import { parseJsonl, getTokenMetrics, getSessionDuration, getSpeedMetricsCollection } from "./data/jsonl";
 import { fetchUsageData, extractUsageFromRateLimits } from "./data/usage-api";
 import { collectGitInfo } from "./data/git";
@@ -118,23 +120,34 @@ async function renderOneshot(): Promise<boolean> {
   for (const line of lines) {
     console.log(line);
   }
+
+  // 记录会话历史
+  try {
+    const sessionId = ctx.data.session_id || `${ctx.tool}-${Date.now()}`;
+    recordSession({
+      id: sessionId,
+      tool: ctx.tool || "claude-code",
+      model: typeof ctx.data.model === "string" ? ctx.data.model : ctx.data.model?.id,
+      project: ctx.data.cwd || ctx.data.workspace?.current_dir,
+      tokenMetrics: ctx.tokenMetrics,
+      endedAt: Date.now(),
+    });
+  } catch {
+    // 记录失败不影响主流程
+  }
+
   return true;
 }
 
 /** 轮询模式 — 持续检测并渲染 */
 async function renderWatch(intervalSec: number) {
-  // 移动光标到顶部，覆盖之前的输出
-  const moveUp = () => process.stdout.write("\x1b[0;0H");
-
   let lastHadOutput = false;
 
   const tick = async () => {
-    // 保存光标位置
     const ok = await renderOneshot();
     if (ok) {
       lastHadOutput = true;
     } else if (lastHadOutput) {
-      // 工具退出后清屏
       console.log("\x1b[90mstatux: tool session ended, waiting...\x1b[0m");
       lastHadOutput = false;
     }
@@ -152,9 +165,10 @@ async function renderWatch(intervalSec: number) {
     }
   }, intervalSec * 1000);
 
-  // 优雅退出
+  // 优雅退出 — renderOneshot 已在每次渲染后记录会话，这里只需关闭数据库
   const cleanup = () => {
     clearInterval(timer);
+    closeHistoryDb();
     process.exit(0);
   };
   process.on("SIGINT", cleanup);
@@ -187,6 +201,63 @@ function emitIterm2Osc(
   process.stdout.write(`\x1b]1337;Custom=id=statux:${payload}\x07`);
 }
 
+/** 打印会话历史 */
+function printHistory(days: number) {
+  const { getDailySummaries, getRecentSessions, getSummaryByModel } = require("./data/history");
+
+  console.log(`\n📊 statux — 最近 ${days} 天用量统计\n`);
+
+  // 每日汇总
+  const daily = getDailySummaries(days);
+  if (daily.length > 0) {
+    console.log("日期         会话数   Token        费用");
+    console.log("─".repeat(50));
+    for (const d of daily) {
+      const tokens = d.totalTokens >= 1_000_000
+        ? `${(d.totalTokens / 1_000_000).toFixed(1)}M`
+        : d.totalTokens >= 1_000
+          ? `${(d.totalTokens / 1_000).toFixed(1)}K`
+          : String(d.totalTokens);
+      const cost = d.totalCostUsd < 0.01 ? "<$0.01" : `$${d.totalCostUsd.toFixed(2)}`;
+      console.log(`${d.date}    ${String(d.sessionCount).padStart(4)}    ${tokens.padStart(10)}    ${cost.padStart(8)}`);
+    }
+    console.log("");
+  } else {
+    console.log("  暂无历史记录\n");
+  }
+
+  // 按模型汇总
+  const byModel = getSummaryByModel(days);
+  if (byModel.length > 0) {
+    console.log("模型                          会话数     费用");
+    console.log("─".repeat(50));
+    for (const m of byModel.slice(0, 10)) {
+      const cost = m.totalCostUsd < 0.01 ? "<$0.01" : `$${m.totalCostUsd.toFixed(2)}`;
+      const name = m.model.length > 28 ? m.model.slice(0, 25) + "..." : m.model;
+      console.log(`${name.padEnd(28)} ${String(m.sessionCount).padStart(5)}    ${cost.padStart(8)}`);
+    }
+    console.log("");
+  }
+
+  // 最近会话
+  const recent = getRecentSessions(10);
+  if (recent.length > 0) {
+    console.log("最近会话:");
+    console.log("工具          模型                          Token      费用");
+    console.log("─".repeat(65));
+    for (const s of recent) {
+      const tokens = (s.tokenMetrics?.totalTokens ?? 0) >= 1_000_000
+        ? `${((s.tokenMetrics?.totalTokens ?? 0) / 1_000_000).toFixed(1)}M`
+        : (s.tokenMetrics?.totalTokens ?? 0) >= 1_000
+          ? `${((s.tokenMetrics?.totalTokens ?? 0) / 1_000).toFixed(1)}K`
+          : String(s.tokenMetrics?.totalTokens ?? 0);
+      const cost = (s.costUsd ?? 0) < 0.01 ? "<$0.01" : `$${(s.costUsd ?? 0).toFixed(2)}`;
+      const model = (s.model ?? "unknown").slice(0, 28);
+      console.log(`${s.tool.padEnd(12)} ${model.padEnd(28)} ${tokens.padStart(10)} ${cost.padStart(8)}`);
+    }
+  }
+}
+
 /** 主函数 */
 async function main() {
   // --setup 安装 iTerm2 插件
@@ -207,6 +278,19 @@ async function main() {
     return;
   }
 
+  // 后台加载 LiteLLM 定价数据（不阻塞首次渲染）
+  ensurePricingLoaded();
+
+  // --history 查看会话历史
+  if (process.argv.includes("--history")) {
+    await initPricingEngine();
+    const daysArg = process.argv[process.argv.indexOf("--history") + 1];
+    const days = daysArg ? parseInt(daysArg, 10) : 7;
+    printHistory(isNaN(days) ? 7 : days);
+    closeHistoryDb();
+    return;
+  }
+
   // --watch / -w [seconds] 轮询模式
   const watchIdx = process.argv.indexOf("--watch");
   const watchShort = process.argv.indexOf("-w");
@@ -219,6 +303,7 @@ async function main() {
       process.exit(1);
     }
     registerAllWidgets();
+    await initPricingEngine();
     await renderWatch(intervalSec);
     return;
   }
@@ -226,6 +311,7 @@ async function main() {
   // --oneshot / -1 单次检测模式
   if (process.argv.includes("--oneshot") || process.argv.includes("-1")) {
     registerAllWidgets();
+    await initPricingEngine();
     const ok = await renderOneshot();
     if (!ok) {
       console.log("\x1b[90mstatux: no active AI tool detected\x1b[0m");
@@ -242,6 +328,7 @@ Usage:
   statux --oneshot | -1           # Auto-detect tool, output once
   statux --watch [seconds] | -w   # Polling daemon mode (default 5s)
   statux --tui                    # Interactive config editor
+  statux --history [days]         # Show usage history (default 7 days)
   statux --setup                  # Install iTerm2 plugin
   statux --config <path>          # Use custom config file
   statux --help                   # Show this help
@@ -333,6 +420,23 @@ Supported tools: Claude Code, Codex (OpenAI)`);
 
   // iTerm2 OSC 序列输出
   emitIterm2Osc(data, tokenMetrics);
+
+  // 记录会话历史
+  try {
+    recordSession({
+      id: data.session_id || `stdin-${Date.now()}`,
+      tool: "claude-code",
+      model: typeof data.model === "string" ? data.model : data.model?.id,
+      project: cwd,
+      tokenMetrics,
+      startedAt: undefined,
+      endedAt: Date.now(),
+    });
+  } catch {
+    // 记录失败不影响主流程
+  }
+
+  closeHistoryDb();
 }
 
 main().catch((err) => {

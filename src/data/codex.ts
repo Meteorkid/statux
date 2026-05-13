@@ -3,8 +3,9 @@ import { homedir } from "os";
 import { join } from "path";
 import { existsSync, readFileSync } from "fs";
 import type { StatusJSON } from "../types/StatusJSON";
-import type { TokenMetrics, SpeedMetrics, SpeedMetricsCollection, RenderContext, GitInfo } from "../types/Widget";
+import type { TokenMetrics, SpeedMetrics, RenderContext, GitInfo } from "../types/Widget";
 import type { Tool } from "../types/Tool";
+import { parseJsonlFile, computeTokenMetrics, computeSessionDuration, computeSpeedMetrics } from "./transcript";
 
 const HOME = process.env.HOME || homedir();
 
@@ -122,7 +123,7 @@ export function buildStatusJSONFromBridge(bridge: CodexBridgeData): StatusJSON {
   };
 }
 
-// ─── Codex Transcript JSONL 解析 ───────────────────────────────
+// ─── Codex Transcript JSONL 解析（基于共享 transcript 模块） ────
 
 interface CodexTranscriptEntry {
   type: string;
@@ -134,86 +135,41 @@ interface CodexTranscriptEntry {
   timestamp?: number;
 }
 
+/** 将 Codex 条目归一化为共享格式 */
+function normalizeCodexEntries(entries: CodexTranscriptEntry[]): import("./transcript").NormalizedEntry[] {
+  const normalized: import("./transcript").NormalizedEntry[] = [];
+  for (const entry of entries) {
+    if (entry.type !== "turn.completed" || !entry.usage) continue;
+    normalized.push({
+      timestamp: entry.timestamp || 0,
+      inputTokens: entry.usage.input_tokens || 0,
+      outputTokens: entry.usage.output_tokens || 0,
+      cacheCreationTokens: 0,
+      cacheReadTokens: entry.usage.cached_input_tokens || 0,
+      isFinalized: true, // Codex 条目无需去重
+      isSidechain: false,
+    });
+  }
+  return normalized;
+}
+
 /** 解析 Codex transcript JSONL，返回条目列表 */
 export function parseCodexTranscript(transcriptPath: string): CodexTranscriptEntry[] {
-  if (!existsSync(transcriptPath)) return [];
-
-  try {
-    const content = readFileSync(transcriptPath, "utf-8");
-    const entries: CodexTranscriptEntry[] = [];
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      try {
-        entries.push(JSON.parse(trimmed));
-      } catch {
-        // 跳过无效行
-      }
-    }
-    return entries;
-  } catch {
-    return [];
-  }
+  return parseJsonlFile<CodexTranscriptEntry>(transcriptPath);
 }
 
 /** 从 Codex transcript 中提取 token 指标 */
 export function buildCodexTokenMetricsFromTranscript(transcriptPath: string): TokenMetrics | null {
   const entries = parseCodexTranscript(transcriptPath);
   if (entries.length === 0) return null;
-
-  let inputTokens = 0;
-  let outputTokens = 0;
-  let cachedInputTokens = 0;
-
-  for (const entry of entries) {
-    // Codex transcript 中 token 数据在 turn.completed 事件中
-    if (entry.type === "turn.completed" && entry.usage) {
-      inputTokens += entry.usage.input_tokens || 0;
-      outputTokens += entry.usage.output_tokens || 0;
-      cachedInputTokens += entry.usage.cached_input_tokens || 0;
-    }
-  }
-
-  const totalTokens = inputTokens + outputTokens + cachedInputTokens;
-  if (totalTokens === 0) return null;
-
-  // contextLength 用最后一个 turn.completed 的 input_tokens + cached
-  const lastCompleted = entries
-    .filter((e) => e.type === "turn.completed" && e.usage)
-    .pop();
-  const contextLength = lastCompleted
-    ? (lastCompleted.usage!.input_tokens || 0) + (lastCompleted.usage!.cached_input_tokens || 0)
-    : 0;
-
-  return {
-    inputTokens,
-    outputTokens,
-    cachedTokens: cachedInputTokens,
-    cacheCreationTokens: 0,
-    cacheReadTokens: cachedInputTokens,
-    totalTokens,
-    contextLength,
-  };
+  return computeTokenMetrics(normalizeCodexEntries(entries));
 }
 
 /** 从 Codex transcript 提取会话时长 */
 export function buildCodexSessionDurationFromTranscript(transcriptPath: string): string | null {
   const entries = parseCodexTranscript(transcriptPath);
   if (entries.length === 0) return null;
-
-  const timestamps = entries
-    .map((e) => e.timestamp)
-    .filter((t): t is number => t != null && t > 0)
-    .sort((a, b) => a - b);
-
-  if (timestamps.length < 2) return null;
-
-  const durationMs = timestamps[timestamps.length - 1]! - timestamps[0]!;
-  const minutes = Math.floor(durationMs / 60000);
-  const hours = Math.floor(minutes / 60);
-
-  if (hours > 0) return `${hours}h${minutes % 60}m`;
-  return `${minutes}m`;
+  return computeSessionDuration(normalizeCodexEntries(entries));
 }
 
 /** 从 Codex transcript 提取速度指标 */
@@ -223,53 +179,7 @@ export function buildCodexSpeedMetricsFromTranscript(
 ): { sessionAverage: SpeedMetrics; windowed: Record<string, SpeedMetrics> } | null {
   const entries = parseCodexTranscript(transcriptPath);
   if (entries.length === 0) return null;
-
-  const completed = entries
-    .filter((e) => e.type === "turn.completed" && e.usage)
-    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-  if (completed.length === 0) return null;
-
-  let totalTokens = 0;
-  const tokenEvents: { tokens: number; time: number }[] = [];
-
-  for (const entry of completed) {
-    const tokens =
-      (entry.usage!.input_tokens || 0) +
-      (entry.usage!.output_tokens || 0) +
-      (entry.usage!.cached_input_tokens || 0);
-    totalTokens += tokens;
-    if (entry.timestamp) {
-      tokenEvents.push({ tokens, time: entry.timestamp });
-    }
-  }
-
-  const firstTime = completed[0]!.timestamp || 0;
-  const lastTime = completed[completed.length - 1]!.timestamp || 0;
-  const durationSec = (lastTime - firstTime) / 1000;
-
-  const sessionAverage: SpeedMetrics = {
-    tokensPerSecond: durationSec > 0 ? totalTokens / durationSec : 0,
-  };
-
-  const windowed: Record<string, SpeedMetrics> = {};
-  const now = Date.now();
-
-  for (const w of windows) {
-    const cutoff = now - w * 1000;
-    const windowEvents = tokenEvents.filter((t) => t.time >= cutoff);
-    const windowTokens = windowEvents.reduce((sum, t) => sum + t.tokens, 0);
-    const windowDuration =
-      windowEvents.length > 1
-        ? (windowEvents[windowEvents.length - 1]!.time - windowEvents[0]!.time) / 1000
-        : w;
-
-    windowed[String(w)] = {
-      tokensPerSecond: windowDuration > 0 ? windowTokens / windowDuration : 0,
-    };
-  }
-
-  return { sessionAverage, windowed };
+  return computeSpeedMetrics(normalizeCodexEntries(entries), windows);
 }
 
 // ─── Token 指标（SQLite fallback）─────────────────────────────

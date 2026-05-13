@@ -7,7 +7,7 @@ const HOME = process.env.HOME || homedir();
 const CONFIG_DIR = join(HOME, ".config", "statux");
 const CONFIG_FILE = join(CONFIG_DIR, "settings.json");
 
-/** 默认配置 — 三行布局 */
+/** 默认配置 — 四行布局 */
 function getDefaultConfig(): Config {
   return {
     version: 1,
@@ -44,6 +44,13 @@ function getDefaultConfig(): Config {
         { id: "wt", type: "git-worktree", label: "wt", color: "red", merge: "no-padding" },
         { id: "s11", type: "separator", color: "white", merge: "no-padding", metadata: { separator: " │ " } },
         { id: "sk", type: "skills", label: "sk", color: "white", merge: "no-padding" },
+      ],
+      [
+        { id: "htoday", type: "history-today", color: "red", merge: "no-padding" },
+        { id: "s12", type: "separator", color: "white", merge: "no-padding", metadata: { separator: " │ " } },
+        { id: "crate", type: "cost-rate", label: "$/min", color: "cyan", merge: "no-padding" },
+        { id: "s13", type: "separator", color: "white", merge: "no-padding", metadata: { separator: " │ " } },
+        { id: "trate", type: "token-rate", label: "tok/min", color: "magenta", merge: "no-padding" },
       ],
     ],
     renderMode: "normal",
