@@ -45,9 +45,9 @@ cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
 
 ## 截图
 
-### GitHub 项目首页
+### 终端运行界面
 
-![statux GitHub](docs/screenshots/statux-github.png)
+![statux 终端运行截图](docs/screenshots/statux-terminal.png)
 
 ---
 
