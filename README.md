@@ -43,6 +43,12 @@ cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
 - [与 ccstatusline 的对比](#与-ccstatusline-的对比)
 - [License](#license)
 
+## 截图
+
+### GitHub 项目首页
+
+![statux GitHub](docs/screenshots/statux-github.png)
+
 ---
 
 ## 功能特性
