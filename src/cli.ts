@@ -37,7 +37,7 @@ async function readStdin(): Promise<string | null> {
 
 /** 单次检测并渲染状态，返回 true 表示成功 */
 async function renderOneshot(): Promise<boolean> {
-  const tool = detectActiveTool();
+  const tool = detectActiveTool() ?? inferToolFromLocalState();
 
   if (!tool) {
     return false;
@@ -121,6 +121,12 @@ async function renderOneshot(): Promise<boolean> {
     console.log(line);
   }
 
+  // iTerm2 OSC 序列输出（用于状态栏更新）
+  emitIterm2Osc(ctx.data, ctx.tokenMetrics);
+
+  // 直接写入 status.json（备用方案，确保 iTerm2 插件能读取）
+  writeStatusJson(ctx.data, ctx.tokenMetrics);
+
   // 记录会话历史
   try {
     const sessionId = ctx.data.session_id || `${ctx.tool}-${Date.now()}`;
@@ -137,6 +143,12 @@ async function renderOneshot(): Promise<boolean> {
   }
 
   return true;
+}
+
+/** 进程列表不可用时，从本地状态文件推断工具类型 */
+function inferToolFromLocalState(): Tool | null {
+  if (readLatestCodexThread() || readCodexBridgeData()) return "codex";
+  return null;
 }
 
 /** 轮询模式 — 持续检测并渲染 */
@@ -186,7 +198,7 @@ function emitIterm2Osc(
   if (!process.env.TERM_PROGRAM?.includes("iTerm")) return;
 
   const model = typeof data.model === "string" ? data.model : data.model?.display_name || data.model?.id || "";
-  const pct = data.context_window?.used_percentage ?? null;
+  const pct = data.context_window?.used_percentage ?? (data.context_window?.remaining_percentage != null ? 100 - data.context_window.remaining_percentage : null);
   const cost = data.cost?.total_cost_usd ?? null;
   const rl = data.rate_limits?.five_hour?.used_percentage ?? null;
 
@@ -199,6 +211,37 @@ function emitIterm2Osc(
   });
 
   process.stdout.write(`\x1b]1337;Custom=id=statux:${payload}\x07`);
+}
+
+/** 直接写入 status.json（备用方案，确保 iTerm2 插件能读取） */
+function writeStatusJson(
+  data: import("./types/StatusJSON").StatusJSON,
+  tokenMetrics: import("./types/Widget").TokenMetrics | null
+) {
+  const { mkdirSync, writeFileSync } = require("fs");
+  const { join } = require("path");
+  const HOME = process.env.HOME || require("os").homedir();
+  const STATUS_FILE = join(HOME, ".cache", "statux", "status.json");
+
+  try {
+    const model = typeof data.model === "string" ? data.model : data.model?.display_name || data.model?.id || "";
+    const pct = data.context_window?.used_percentage ?? (data.context_window?.remaining_percentage != null ? 100 - data.context_window.remaining_percentage : null);
+    const cost = data.cost?.total_cost_usd ?? null;
+    const rl = data.rate_limits?.five_hour?.used_percentage ?? null;
+
+    const payload = {
+      model,
+      ctxPct: pct != null ? Math.round(pct) : null,
+      cost: cost != null ? cost.toFixed(2) : null,
+      rateLimit: rl != null ? Math.round(rl) : null,
+      tokens: tokenMetrics ? { in: tokenMetrics.inputTokens, out: tokenMetrics.outputTokens } : null,
+    };
+
+    mkdirSync(join(HOME, ".cache", "statux"), { recursive: true });
+    writeFileSync(STATUS_FILE, JSON.stringify(payload, null, 2));
+  } catch {
+    // 写入失败不影响主流程
+  }
 }
 
 /** 打印会话历史 */
@@ -351,7 +394,7 @@ Supported tools: Claude Code, Codex (OpenAI)`);
   const input = await readStdin();
   if (!input || input.trim() === "") {
     // 无 stdin — 尝试自动检测工具
-    const tool = detectActiveTool();
+    const tool = detectActiveTool() ?? inferToolFromLocalState();
     if (tool) {
       const ok = await renderOneshot();
       process.exit(ok ? 0 : 1);
@@ -420,6 +463,9 @@ Supported tools: Claude Code, Codex (OpenAI)`);
 
   // iTerm2 OSC 序列输出
   emitIterm2Osc(data, tokenMetrics);
+
+  // 直接写入 status.json（备用方案，确保 iTerm2 插件能读取）
+  writeStatusJson(data, tokenMetrics);
 
   // 记录会话历史
   try {

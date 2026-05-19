@@ -44,7 +44,7 @@ export const ContextPctUsableWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const pct = ctx.data.context_window?.used_percentage;
+    const pct = ctx.data.context_window?.used_percentage ?? (ctx.data.context_window?.remaining_percentage != null ? 100 - ctx.data.context_window.remaining_percentage : null);
     if (pct == null) return null;
     // 可用百分比 = 实际百分比 / 80% (auto-compact 阈值)
     const usablePct = Math.min(100, Math.round((pct / 80) * 100));

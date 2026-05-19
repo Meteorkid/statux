@@ -26,7 +26,11 @@ export function processNameMatches(command: string, name: string): boolean {
 }
 
 function getUnixProcessList(): ProcessInfo[] {
-  const output = execSync("ps aux", { encoding: "utf-8", timeout: 3000 });
+  const output = execSync("ps aux", {
+    encoding: "utf-8",
+    timeout: 3000,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
   const result: ProcessInfo[] = [];
 
   for (const line of output.split("\n")) {
@@ -46,7 +50,11 @@ function getUnixProcessList(): ProcessInfo[] {
 function getWindowsProcessList(): ProcessInfo[] {
   const output = execSync(
     'powershell -NoProfile -Command "Get-CimInstance Win32_Process | Select-Object ProcessId, CommandLine | ForEach-Object { $pid = $_.ProcessId; $cmd = $_.CommandLine ?? \\\"\\\"; Write-Output \\\"$pid|$cmd\\\" }"',
-    { encoding: "utf-8", timeout: 5000 }
+    {
+      encoding: "utf-8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "ignore"],
+    }
   );
   const result: ProcessInfo[] = [];
 
