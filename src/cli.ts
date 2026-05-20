@@ -37,15 +37,15 @@ async function renderOneshot(): Promise<boolean> {
     return false;
   }
 
+  const config = loadConfig();
   const requireFreshLocalState = activeTool == null;
   const ctx =
     tool === "codex"
-      ? buildCodexRenderContextFromLocalState(requireFreshLocalState)
-      : buildClaudeRenderContextFromActiveSession();
+      ? buildCodexRenderContextFromLocalState(requireFreshLocalState, { lines: config.lines })
+      : buildClaudeRenderContextFromActiveSession({ lines: config.lines });
 
   if (!ctx) return false;
 
-  const config = loadConfig();
   const lines = renderStatusLines(config.lines, config, ctx);
   for (const line of lines) {
     console.log(line);
@@ -192,7 +192,7 @@ async function main() {
   // 加载配置
   const config = loadConfig(command.configPath);
 
-  const ctx = await buildClaudeRenderContextFromStatusData(data);
+  const ctx = await buildClaudeRenderContextFromStatusData(data, { lines: config.lines });
 
   // 渲染
   const lines = renderStatusLines(config.lines, config, ctx);

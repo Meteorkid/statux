@@ -1,5 +1,5 @@
 import type { StatusJSON } from "../types/StatusJSON";
-import type { RenderContext, SpeedMetrics } from "../types/Widget";
+import type { RenderContext, SpeedMetrics, WidgetItem } from "../types/Widget";
 import { findActiveTranscriptPath, buildMinimalStatusJSON } from "./claude-session";
 import {
   buildCodexRenderContext,
@@ -18,6 +18,28 @@ import { collectJujutsuInfo } from "./jujutsu";
 import { parseJsonl, getTokenMetrics, getSessionDuration, getSpeedMetricsCollection } from "./jsonl";
 import { fetchUsageData, extractUsageFromRateLimits } from "./usage-api";
 import { terminalColumns } from "../utils/terminal";
+import { getWidgetRequirements, type WidgetRequirements } from "./widget-requirements";
+
+export interface RenderContextBuildOptions {
+  lines?: WidgetItem[][];
+}
+
+function getRequirements(options: RenderContextBuildOptions = {}): WidgetRequirements {
+  return getWidgetRequirements(options.lines ?? []);
+}
+
+function collectGitInfoForRequirements(cwd: string | undefined, requirements: WidgetRequirements): RenderContext["gitInfo"] {
+  if (!requirements.needsGit) return null;
+  return collectGitInfo(cwd, {
+    includeFork: requirements.needsGitFork,
+    includePullRequest: requirements.needsGitPullRequest,
+  });
+}
+
+function collectJujutsuInfoForRequirements(cwd: string | undefined, requirements: WidgetRequirements): RenderContext["jujutsuInfo"] {
+  if (!requirements.needsJujutsu) return null;
+  return collectJujutsuInfo(cwd);
+}
 
 function getClaudeTranscriptMetrics(transcriptPath?: string): {
   tokenMetrics: RenderContext["tokenMetrics"];
@@ -42,7 +64,10 @@ function getClaudeTranscriptMetrics(transcriptPath?: string): {
   return { tokenMetrics, sessionDuration, speedMetrics, windowedSpeedMetrics };
 }
 
-function buildCodexBridgeRenderContext(bridge: CodexBridgeData): RenderContext {
+function buildCodexBridgeRenderContext(
+  bridge: CodexBridgeData,
+  requirements: WidgetRequirements
+): RenderContext {
   const data = buildStatusJSONFromBridge(bridge);
   const transcriptPath = bridge.transcript_path;
   const tokenMetrics = transcriptPath
@@ -63,59 +88,66 @@ function buildCodexBridgeRenderContext(bridge: CodexBridgeData): RenderContext {
     sessionDuration,
     terminalWidth: terminalColumns(),
     usageData: null,
-    gitInfo: collectGitInfo(bridge.cwd),
-    jujutsuInfo: collectJujutsuInfo(bridge.cwd),
+    gitInfo: collectGitInfoForRequirements(bridge.cwd, requirements),
+    jujutsuInfo: collectJujutsuInfoForRequirements(bridge.cwd, requirements),
     tool: "codex",
   };
 }
 
 export function buildCodexRenderContextFromLocalState(
-  requireFreshLocalState: boolean
+  requireFreshLocalState: boolean,
+  options: RenderContextBuildOptions = {}
 ): RenderContext | null {
+  const requirements = getRequirements(options);
   const thread = requireFreshLocalState ? readLatestFreshCodexThread() : readLatestCodexThread();
   if (thread) return buildCodexRenderContext(thread);
 
   const bridge = requireFreshLocalState ? readFreshCodexBridgeData() : readCodexBridgeData();
   if (!bridge) return null;
 
-  return buildCodexBridgeRenderContext(bridge);
+  return buildCodexBridgeRenderContext(bridge, requirements);
 }
 
-export function buildClaudeRenderContextFromActiveSession(): RenderContext | null {
+export function buildClaudeRenderContextFromActiveSession(
+  options: RenderContextBuildOptions = {}
+): RenderContext | null {
   const transcriptPath = findActiveTranscriptPath();
   if (!transcriptPath) return null;
 
   const data = buildMinimalStatusJSON(transcriptPath);
   const metrics = getClaudeTranscriptMetrics(transcriptPath);
   const cwd = data.cwd || data.workspace?.current_dir || process.cwd();
+  const requirements = getRequirements(options);
 
   return {
     data,
     ...metrics,
     terminalWidth: terminalColumns(),
     usageData: null,
-    gitInfo: collectGitInfo(cwd),
-    jujutsuInfo: collectJujutsuInfo(cwd),
+    gitInfo: collectGitInfoForRequirements(cwd, requirements),
+    jujutsuInfo: collectJujutsuInfoForRequirements(cwd, requirements),
     tool: "claude-code",
   };
 }
 
 export async function buildClaudeRenderContextFromStatusData(
-  data: StatusJSON
+  data: StatusJSON,
+  options: RenderContextBuildOptions = {}
 ): Promise<RenderContext> {
   const transcriptPath = data.transcript_path || findActiveTranscriptPath() || undefined;
   const metrics = getClaudeTranscriptMetrics(transcriptPath);
   const rateLimitsUsage = extractUsageFromRateLimits(data.rate_limits);
   const usageData = await fetchUsageData(rateLimitsUsage);
   const cwd = data.cwd || data.workspace?.current_dir;
+  const requirements = getRequirements(options);
 
   return {
     data,
     ...metrics,
     terminalWidth: terminalColumns(),
     usageData,
-    gitInfo: collectGitInfo(cwd),
-    jujutsuInfo: collectJujutsuInfo(cwd),
+    gitInfo: collectGitInfoForRequirements(cwd, requirements),
+    jujutsuInfo: collectJujutsuInfoForRequirements(cwd, requirements),
     tool: "claude-code",
   };
 }

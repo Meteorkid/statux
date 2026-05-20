@@ -1,6 +1,11 @@
 import { execSync } from "child_process";
 import type { GitInfo } from "../types/Widget";
 
+export interface CollectGitInfoOptions {
+  includeFork?: boolean;
+  includePullRequest?: boolean;
+}
+
 function safeExec(cmd: string, cwd?: string, timeout: number = 2000): string | null {
   try {
     return execSync(cmd, { cwd, encoding: "utf-8", timeout, stdio: ["pipe", "pipe", "pipe"] }).trim();
@@ -10,7 +15,7 @@ function safeExec(cmd: string, cwd?: string, timeout: number = 2000): string | n
 }
 
 /** 预采集所有 Git 信息 — 单次调用，所有 git widget 共享结果 */
-export function collectGitInfo(cwd?: string): GitInfo | null {
+export function collectGitInfo(cwd?: string, options: CollectGitInfoOptions = {}): GitInfo | null {
   // 快速检测是否在 git 仓库中
   const isGit = safeExec("git rev-parse --is-inside-work-tree", cwd);
   if (isGit !== "true") return null;
@@ -80,11 +85,18 @@ export function collectGitInfo(cwd?: string): GitInfo | null {
   const untrackedFilesOutput = safeExec("git ls-files --others --exclude-standard", cwd);
   const untrackedFiles = untrackedFilesOutput ? untrackedFilesOutput.split("\n").filter(l => l.trim()).length : 0;
 
-  const forkOutput = safeExec("gh repo view --json isFork -q .isFork 2>/dev/null", cwd, 800);
-  const isFork = forkOutput === null ? null : forkOutput === "true";
-  const githubPr = safeExec("gh pr view --json number,title,state --jq '\"#\" + (.number|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd, 800);
-  const gitlabPr = githubPr ? null : safeExec("glab mr view --json iid,title,state --jq '\"!\" + (.iid|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd, 800);
-  const pullRequest = githubPr || gitlabPr;
+  let isFork: boolean | null = null;
+  if (options.includeFork) {
+    const forkOutput = safeExec("gh repo view --json isFork -q .isFork 2>/dev/null", cwd, 800);
+    isFork = forkOutput === null ? null : forkOutput === "true";
+  }
+
+  let pullRequest: string | null = null;
+  if (options.includePullRequest) {
+    const githubPr = safeExec("gh pr view --json number,title,state --jq '\"#\" + (.number|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd, 800);
+    const gitlabPr = githubPr ? null : safeExec("glab mr view --json iid,title,state --jq '\"!\" + (.iid|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd, 800);
+    pullRequest = githubPr || gitlabPr;
+  }
 
   return {
     branch, staged, unstaged, untracked, ahead, behind,

@@ -724,6 +724,7 @@ statux (TypeScript/Bun)
 │   │   └── powerline.ts       # Powerline 渲染
 │   ├── data/
 │   │   ├── render-context.ts  # Claude/Codex RenderContext 构建
+│   │   ├── widget-requirements.ts # 根据配置判断需要采集的数据
 │   │   ├── jsonl.ts           # Claude Code JSONL 解析（适配器）
 │   │   ├── codex.ts           # Codex SQLite + bridge + transcript 解析
 │   │   ├── iterm2-status.ts   # iTerm2 状态 payload 构建
