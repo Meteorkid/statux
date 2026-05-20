@@ -704,6 +704,10 @@ statux --tui
 statux (TypeScript/Bun)
 ├── src/
 │   ├── cli.ts                 # CLI 入口：statusLine/oneshot/watch/TUI 模式
+│   ├── cli/
+│   │   ├── args.ts            # CLI 参数解析
+│   │   ├── output.ts          # iTerm2 OSC + status.json 输出
+│   │   └── session-history.ts # 会话历史输出与记录
 │   ├── setup.ts               # iTerm2 plugin 安装
 │   ├── types/
 │   │   ├── StatusJSON.ts      # 输入 schema (Zod)
@@ -719,21 +723,24 @@ statux (TypeScript/Bun)
 │   │   ├── ansi.ts            # ANSI 工具
 │   │   └── powerline.ts       # Powerline 渲染
 │   ├── data/
+│   │   ├── render-context.ts  # Claude/Codex RenderContext 构建
 │   │   ├── jsonl.ts           # Claude Code JSONL 解析（适配器）
 │   │   ├── codex.ts           # Codex SQLite + bridge + transcript 解析
+│   │   ├── iterm2-status.ts   # iTerm2 状态 payload 构建
 │   │   ├── transcript.ts      # 统一 transcript 解析层（NormalizedEntry）
 │   │   ├── claude-session.ts  # Claude Code 会话检测
 │   │   ├── model-pricing.ts   # 双层定价：精选表 + LiteLLM 2200+ 模型
 │   │   ├── litellm-fetcher.ts # LiteLLM 定价数据拉取和缓存
 │   │   ├── history.ts         # SQLite 会话历史存储和查询
 │   │   ├── git.ts             # Git 状态采集
+│   │   ├── jujutsu.ts         # Jujutsu 状态采集
 │   │   └── usage-api.ts       # Anthropic Usage API 客户端
 │   ├── config.ts              # 配置加载/保存/迁移
 │   └── tui/                   # Ink TUI 配置界面
 │       ├── App.tsx            # 主应用组件
 │       └── index.tsx          # TUI 入口
 ├── iterm2/
-│   └── statux.py              # iTerm2 Python Plugin
+│   └── statux.py              # iTerm2 Python Plugin（setup.ts 的单一来源）
 └── scripts/
     └── build.ts               # 多平台构建脚本
 ```

@@ -1,18 +1,5 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { execSync } from "child_process";
-
-function jjExec(args: string, cwd: string): string | null {
-  try {
-    return execSync(`jj ${args}`, { encoding: "utf-8", cwd, timeout: 3000 }).trim();
-  } catch {
-    return null;
-  }
-}
-
-function isInJjRepo(cwd: string): boolean {
-  return jjExec("root", cwd) !== null;
-}
 
 export const JjBookmarksWidget: Widget = {
   type: "jj-bookmarks",
@@ -22,13 +9,8 @@ export const JjBookmarksWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    if (!isInJjRepo(cwd)) return null;
-
-    const output = jjExec("bookmark list -T 'name ++ \" \"'", cwd);
-    if (!output) return null;
-    const bookmarks = output.split("\n").filter((b) => b.trim());
-    if (bookmarks.length === 0) return null;
+    const bookmarks = ctx.jujutsuInfo?.bookmarks;
+    if (!bookmarks || bookmarks.length === 0) return null;
 
     return colorize(bookmarks.join(","), item.color || this.defaultColor, item.bold);
   },
@@ -42,10 +24,9 @@ export const JjWorkspaceWidget: Widget = {
   defaultColor: "blue",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const output = jjExec("workspace list -T 'name'", cwd);
-    if (!output) return null;
-    return colorize(output, item.color || this.defaultColor, item.bold);
+    const workspace = ctx.jujutsuInfo?.workspace;
+    if (!workspace) return null;
+    return colorize(workspace, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -57,11 +38,9 @@ export const JjRootDirWidget: Widget = {
   defaultColor: "blue",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const root = jjExec("root", cwd);
-    if (!root) return null;
-    const name = root.split("/").pop() || root;
-    return colorize(name, item.color || this.defaultColor, item.bold);
+    const rootDir = ctx.jujutsuInfo?.rootDir;
+    if (!rootDir) return null;
+    return colorize(rootDir, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -73,10 +52,9 @@ export const JjChangesWidget: Widget = {
   defaultColor: "yellow",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const output = jjExec("diff --stat | tail -1", cwd);
-    if (!output) return null;
-    return colorize(output, item.color || this.defaultColor, item.bold);
+    const changes = ctx.jujutsuInfo?.changes;
+    if (!changes) return null;
+    return colorize(changes, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -88,12 +66,9 @@ export const JjInsertionsWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const output = jjExec("diff --stat", cwd);
-    if (!output) return null;
-    const match = output.match(/(\d+) insertion/);
-    if (!match) return null;
-    return colorize(`+${match[1]}`, item.color || this.defaultColor, item.bold);
+    const insertions = ctx.jujutsuInfo?.insertions ?? 0;
+    if (insertions === 0) return null;
+    return colorize(`+${insertions}`, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -105,12 +80,9 @@ export const JjDeletionsWidget: Widget = {
   defaultColor: "red",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const output = jjExec("diff --stat", cwd);
-    if (!output) return null;
-    const match = output.match(/(\d+) deletion/);
-    if (!match) return null;
-    return colorize(`-${match[1]}`, item.color || this.defaultColor, item.bold);
+    const deletions = ctx.jujutsuInfo?.deletions ?? 0;
+    if (deletions === 0) return null;
+    return colorize(`-${deletions}`, item.color || this.defaultColor, item.bold);
   },
 };
 
@@ -122,8 +94,7 @@ export const JjDescriptionWidget: Widget = {
   defaultColor: "white",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const output = jjExec("log -r @ -T 'description.first_line()'", cwd);
+    const output = ctx.jujutsuInfo?.description;
     if (!output) return null;
     const maxLen = (item.metadata?.maxLength as number) || 40;
     const display = output.length > maxLen ? output.slice(0, maxLen) + "…" : output;
@@ -139,9 +110,8 @@ export const JjRevisionWidget: Widget = {
   defaultColor: "gray",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const output = jjExec("log -r @ -T 'change_id.shortest(8)'", cwd);
-    if (!output) return null;
-    return colorize(output, item.color || this.defaultColor, item.bold);
+    const revision = ctx.jujutsuInfo?.revision;
+    if (!revision) return null;
+    return colorize(revision, item.color || this.defaultColor, item.bold);
   },
 };

@@ -51,6 +51,20 @@ export interface GitInfo {
   stagedFiles: number;
   unstagedFiles: number;
   untrackedFiles: number;
+  isFork: boolean | null;
+  pullRequest: string | null;
+}
+
+/** Jujutsu 仓库信息 — 预采集，所有 jj widget 共享 */
+export interface JujutsuInfo {
+  bookmarks: string[];
+  workspace: string | null;
+  rootDir: string | null;
+  changes: string | null;
+  insertions: number;
+  deletions: number;
+  description: string | null;
+  revision: string | null;
 }
 
 /** 渲染上下文 — 所有 widget 共享 */
@@ -63,6 +77,7 @@ export interface RenderContext {
   terminalWidth: number;
   usageData: UsageData | null;
   gitInfo: GitInfo | null;
+  jujutsuInfo: JujutsuInfo | null;
   tool: Tool | null; // 数据来源工具
 }
 

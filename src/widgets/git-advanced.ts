@@ -1,14 +1,5 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { execSync } from "child_process";
-
-function gitExec(cmd: string, cwd: string): string | null {
-  try {
-    return execSync(cmd, { encoding: "utf-8", cwd, timeout: 3000 }).trim();
-  } catch {
-    return null;
-  }
-}
 
 export const GitRootDirWidget: Widget = {
   type: "git-root-dir",
@@ -104,11 +95,7 @@ export const GitIsForkWidget: Widget = {
   defaultColor: "yellow",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-    const output = gitExec("gh repo view --json isFork -q .isFork 2>/dev/null", cwd);
-    if (output === null) return null;
-    const isFork = output === "true";
-    if (!isFork) return null;
+    if (!ctx.gitInfo?.isFork) return null;
     return colorize("fork", item.color || this.defaultColor, item.bold);
   },
 };
@@ -135,14 +122,7 @@ export const GitPrWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cwd = ctx.data.cwd || process.cwd();
-
-    // 尝试 GitHub CLI
-    let output = gitExec("gh pr view --json number,title,state --jq '\"#\" + (.number|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd);
-    if (output) return colorize(output, item.color || this.defaultColor, item.bold);
-
-    // 尝试 GitLab CLI
-    output = gitExec("glab mr view --json iid,title,state --jq '\"!\" + (.iid|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd);
+    const output = ctx.gitInfo?.pullRequest;
     if (output) return colorize(output, item.color || this.defaultColor, item.bold);
 
     return null;

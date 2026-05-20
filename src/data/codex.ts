@@ -9,7 +9,7 @@ import { parseJsonlFile, computeTokenMetrics, computeSessionDuration, computeSpe
 
 const HOME = process.env.HOME || homedir();
 
-interface CodexThread {
+export interface CodexThread {
   id: string;
   rollout_path: string;
   created_at: number;
@@ -33,7 +33,7 @@ interface CodexThread {
 }
 
 /** Bridge 数据（由 Codex hooks 写入） */
-interface CodexBridgeData {
+export interface CodexBridgeData {
   session_id: string;
   transcript_path: string | null;
   cwd: string;
@@ -45,6 +45,38 @@ interface CodexBridgeData {
 
 const STATE_DB = join(HOME, ".codex", "state_5.sqlite");
 const BRIDGE_FILE = join(HOME, ".cache", "statux", "codex-bridge.json");
+const LOCAL_STATE_TTL_MS = 2 * 60 * 1000;
+
+function normalizeTimestampMs(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return value > 1_000_000_000_000 ? value : value * 1000;
+}
+
+function getThreadUpdatedMs(thread: CodexThread): number | null {
+  return normalizeTimestampMs(thread.updated_at_ms ?? thread.updated_at);
+}
+
+/** 判断 Codex bridge 数据是否足够新鲜，可用于无进程 fallback */
+export function isCodexBridgeFresh(
+  bridge: CodexBridgeData,
+  now: number = Date.now(),
+  ttlMs: number = LOCAL_STATE_TTL_MS
+): boolean {
+  const updatedMs = normalizeTimestampMs(bridge.last_updated);
+  if (updatedMs == null) return false;
+  return now - updatedMs >= 0 && now - updatedMs <= ttlMs;
+}
+
+/** 判断 Codex SQLite 线程是否足够新鲜，可用于无进程 fallback */
+export function isCodexThreadFresh(
+  thread: CodexThread,
+  now: number = Date.now(),
+  ttlMs: number = LOCAL_STATE_TTL_MS
+): boolean {
+  const updatedMs = getThreadUpdatedMs(thread);
+  if (updatedMs == null) return false;
+  return now - updatedMs >= 0 && now - updatedMs <= ttlMs;
+}
 
 /** 读取 Codex hook bridge 数据 */
 export function readCodexBridgeData(): CodexBridgeData | null {
@@ -59,6 +91,13 @@ export function readCodexBridgeData(): CodexBridgeData | null {
   } catch {
     return null;
   }
+}
+
+/** 读取足够新鲜的 Codex bridge 数据 */
+export function readFreshCodexBridgeData(): CodexBridgeData | null {
+  const bridge = readCodexBridgeData();
+  if (!bridge || !isCodexBridgeFresh(bridge)) return null;
+  return bridge;
 }
 
 /** 读取 Codex 最新活跃线程 */
@@ -77,6 +116,18 @@ export function readLatestCodexThread(): CodexThread | null {
   } finally {
     db?.close();
   }
+}
+
+/** 读取足够新鲜的 Codex 线程 */
+export function readLatestFreshCodexThread(): CodexThread | null {
+  const thread = readLatestCodexThread();
+  if (!thread || !isCodexThreadFresh(thread)) return null;
+  return thread;
+}
+
+/** 本地 Codex 状态是否可作为无进程 fallback */
+export function hasFreshCodexLocalState(): boolean {
+  return !!(readLatestFreshCodexThread() || readFreshCodexBridgeData());
 }
 
 /** 将 Codex 线程数据映射为类 StatusJSON 结构 */
@@ -242,6 +293,8 @@ export function buildCodexGitInfo(thread: CodexThread): GitInfo | null {
     stagedFiles: 0,
     unstagedFiles: 0,
     untrackedFiles: 0,
+    isFork: null,
+    pullRequest: null,
   };
 }
 
@@ -273,6 +326,7 @@ export function buildCodexRenderContext(thread: CodexThread): RenderContext {
       terminalWidth: process.stdout.columns || 80,
       usageData: null,
       gitInfo: buildCodexGitInfo(thread),
+      jujutsuInfo: null,
       tool: "codex",
     };
   }
@@ -292,6 +346,7 @@ export function buildCodexRenderContext(thread: CodexThread): RenderContext {
     terminalWidth: process.stdout.columns || 80,
     usageData: null,
     gitInfo,
+    jujutsuInfo: null,
     tool: "codex",
   };
 }

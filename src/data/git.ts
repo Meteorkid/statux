@@ -1,9 +1,9 @@
 import { execSync } from "child_process";
 import type { GitInfo } from "../types/Widget";
 
-function safeExec(cmd: string, cwd?: string): string | null {
+function safeExec(cmd: string, cwd?: string, timeout: number = 2000): string | null {
   try {
-    return execSync(cmd, { cwd, encoding: "utf-8", timeout: 2000, stdio: ["pipe", "pipe", "pipe"] }).trim();
+    return execSync(cmd, { cwd, encoding: "utf-8", timeout, stdio: ["pipe", "pipe", "pipe"] }).trim();
   } catch {
     return null;
   }
@@ -80,11 +80,19 @@ export function collectGitInfo(cwd?: string): GitInfo | null {
   const untrackedFilesOutput = safeExec("git ls-files --others --exclude-standard", cwd);
   const untrackedFiles = untrackedFilesOutput ? untrackedFilesOutput.split("\n").filter(l => l.trim()).length : 0;
 
+  const forkOutput = safeExec("gh repo view --json isFork -q .isFork 2>/dev/null", cwd, 800);
+  const isFork = forkOutput === null ? null : forkOutput === "true";
+  const githubPr = safeExec("gh pr view --json number,title,state --jq '\"#\" + (.number|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd, 800);
+  const gitlabPr = githubPr ? null : safeExec("glab mr view --json iid,title,state --jq '\"!\" + (.iid|tostring) + \" \" + .title + \" [\" + .state + \"]\"' 2>/dev/null", cwd, 800);
+  const pullRequest = githubPr || gitlabPr;
+
   return {
     branch, staged, unstaged, untracked, ahead, behind,
     insertions, deletions, rootDir, sha, origin, conflicts,
     worktree, isClean: staged === 0 && unstaged === 0 && untracked === 0,
     stagedFiles, unstagedFiles, untrackedFiles,
+    isFork,
+    pullRequest,
   };
 }
 
