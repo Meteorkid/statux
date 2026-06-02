@@ -6,6 +6,7 @@ import type { StatusJSON } from "../types/StatusJSON";
 import type { TokenMetrics, SpeedMetrics, RenderContext, GitInfo } from "../types/Widget";
 import type { Tool } from "../types/Tool";
 import { parseJsonlFile, computeTokenMetrics, computeSessionDuration, computeSpeedMetrics } from "./transcript";
+import { collectGitInfo } from "./git";
 
 const HOME = process.env.HOME || homedir();
 
@@ -325,17 +326,16 @@ export function buildCodexRenderContext(thread: CodexThread): RenderContext {
       sessionDuration,
       terminalWidth: process.stdout.columns || 80,
       usageData: null,
-      gitInfo: buildCodexGitInfo(thread),
+      gitInfo: collectGitInfo(bridge.cwd) || buildCodexGitInfo(thread),
       jujutsuInfo: null,
       tool: "codex",
     };
   }
 
-  // Fallback: 仅 SQLite 数据
+  // Fallback: 仅 SQLite 数据，git 状态未知（返回 null 而非假数据）
   const data = buildStatusJSONFromCodex(thread);
   const tokenMetrics = buildCodexTokenMetrics(thread);
   const sessionDuration = buildCodexSessionDuration(thread);
-  const gitInfo = buildCodexGitInfo(thread);
 
   return {
     data,
@@ -345,7 +345,7 @@ export function buildCodexRenderContext(thread: CodexThread): RenderContext {
     sessionDuration,
     terminalWidth: process.stdout.columns || 80,
     usageData: null,
-    gitInfo,
+    gitInfo: null,  // SQLite 无 git 数据，不显示而非误报 clean
     jujutsuInfo: null,
     tool: "codex",
   };

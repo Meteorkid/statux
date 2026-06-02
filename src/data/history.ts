@@ -71,10 +71,11 @@ export interface SessionRecord {
   endedAt?: number;
 }
 
-/** 查找可能重复的 session（同模型、同 token 数据、5 分钟内） */
+/** 查找可能重复的 session（同模型、同项目、同 token 数据、5 分钟内） */
 function findDuplicateSession(
   database: Database,
   model: string | undefined,
+  project: string | undefined,
   inputTokens: number,
   outputTokens: number,
   cacheReadTokens: number
@@ -84,11 +85,11 @@ function findDuplicateSession(
   return database
     .query(
       `SELECT id FROM sessions
-       WHERE model = ? AND input_tokens = ? AND output_tokens = ? AND cache_read_tokens = ?
+       WHERE model = ? AND project = ? AND input_tokens = ? AND output_tokens = ? AND cache_read_tokens = ?
          AND created_at >= ?
        ORDER BY created_at DESC LIMIT 1`
     )
-    .get(model, inputTokens, outputTokens, cacheReadTokens, fiveMinAgo) as { id: string } | null;
+    .get(model, project ?? null, inputTokens, outputTokens, cacheReadTokens, fiveMinAgo) as { id: string } | null;
 }
 
 /**
@@ -122,7 +123,7 @@ export function recordSession(session: SessionRecord): void {
   let sessionId = session.id;
   if (metrics && session.model) {
     const dup = findDuplicateSession(
-      database, session.model,
+      database, session.model, session.project,
       metrics.inputTokens, metrics.outputTokens, metrics.cacheReadTokens
     );
     if (dup && dup.id !== sessionId) {

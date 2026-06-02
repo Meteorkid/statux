@@ -14,9 +14,12 @@ export const SessionClockWidget: Widget = {
     // 从 StatusJSON 的 cost 字段获取时长
     if (!duration && ctx.data.cost?.total_duration_ms) {
       const ms = ctx.data.cost.total_duration_ms;
-      const minutes = Math.floor(ms / 60000);
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
       const hours = Math.floor(minutes / 60);
-      duration = hours > 0 ? `${hours}h${minutes % 60}m` : `${minutes}m`;
+      if (hours > 0) duration = `${hours}h${minutes % 60}m`;
+      else if (minutes > 0) duration = `${minutes}m`;
+      else duration = `${totalSeconds}s`;
     }
 
     if (!duration) return null;

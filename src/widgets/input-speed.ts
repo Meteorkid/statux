@@ -15,7 +15,7 @@ export const InputSpeedWidget: Widget = {
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
     // 优先用窗口速度，fallback 到会话平均
-    const windowSec = (item.metadata?.windowSeconds as number) || 60;
+    const windowSec = (item.metadata?.window as number) || (item.metadata?.windowSeconds as number) || 60;
     let speed: number | null = null;
 
     if (ctx.windowedSpeedMetrics && windowSec > 0) {

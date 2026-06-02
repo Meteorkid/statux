@@ -2,11 +2,11 @@ import type { PreRenderedWidget } from "../types/Widget";
 import type { Config } from "../types/Config";
 import { getVisibleText } from "./ansi";
 
-// Powerline 字符
-const RIGHT_ARROW = " "; // U+E0B0
-const RIGHT_THIN = " "; // U+E0B1
-const LEFT_ARROW = ""; // U+E0B2
-const LEFT_THIN = ""; // U+E0B3
+// Powerline 字符（需要 Nerd Font 或 Powerline 字体才能正确显示）
+const RIGHT_ARROW = "";
+const RIGHT_THIN = "";
+const LEFT_ARROW = "";
+const LEFT_THIN = "";
 
 // 默认颜色映射
 const DEFAULT_BG = "\x1b[40m"; // black

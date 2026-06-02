@@ -41,6 +41,18 @@ export function preRenderAllWidgets(
         return { item, text: null, visibleText: "", width: 0 };
       }
 
+      // maxWidth 截断
+      if (item.maxWidth && item.maxWidth > 0) {
+        const visibleTextForCheck = getVisibleText(text);
+        if (visibleTextForCheck.length > item.maxWidth) {
+          const truncated = visibleTextForCheck.slice(0, item.maxWidth - 1) + "…";
+          // 保留前缀颜色码
+          const colorMatch = text.match(/^(\x1b\[[0-9;]*m)*/);
+          const prefix = colorMatch ? colorMatch[0] : "";
+          text = `${prefix}${truncated}\x1b[0m`;
+        }
+      }
+
       const visibleText = getVisibleText(text);
       const width = getVisibleWidth(text);
 

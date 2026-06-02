@@ -14,9 +14,10 @@ export function formatDuration(ms: number): string {
   return parts.join("");
 }
 
-/** 渲染进度条文本 */
+/** 渲染进度条文本（clamp 到 0-100 防止 repeat 负数崩溃） */
 export function renderProgressBar(pct: number, width: number): string {
-  const filled = Math.round((pct / 100) * width);
+  const clamped = Math.max(0, Math.min(100, pct));
+  const filled = Math.round((clamped / 100) * width);
   const empty = width - filled;
   return `[${"█".repeat(filled)}${"░".repeat(empty)}]`;
 }

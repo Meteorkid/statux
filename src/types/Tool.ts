@@ -3,25 +3,28 @@ import { getProcessList, processNameMatches } from "../utils/process";
 /** 支持的 AI 工具 */
 export type Tool = "claude-code" | "codex";
 
-/** 检测当前活跃的 AI 工具进程 */
+/** 检测当前活跃的 AI 工具进程（同时运行时优先 PID 更大的——更新启动的进程） */
 export function detectActiveTool(): Tool | null {
   const processes = getProcessList();
 
-  let hasClaude = false;
-  let hasCodex = false;
+  let maxClaudePid = 0;
+  let maxCodexPid = 0;
 
   for (const proc of processes) {
     if (processNameMatches(proc.command, "claude") && !proc.command.includes("brew")) {
-      hasClaude = true;
+      if (proc.pid > maxClaudePid) maxClaudePid = proc.pid;
     }
     if (processNameMatches(proc.command, "codex") || proc.command.includes("Codex")) {
-      hasCodex = true;
+      if (proc.pid > maxCodexPid) maxCodexPid = proc.pid;
     }
   }
 
-  if (hasClaude && !hasCodex) return "claude-code";
-  if (hasCodex && !hasClaude) return "codex";
-  if (hasClaude && hasCodex) return "claude-code"; // 优先 Claude Code
+  if (maxClaudePid > 0 && maxCodexPid === 0) return "claude-code";
+  if (maxCodexPid > 0 && maxClaudePid === 0) return "codex";
+  if (maxClaudePid > 0 && maxCodexPid > 0) {
+    // 同时运行时，PID 更大的通常是更晚启动的（更可能是当前活跃的）
+    return maxClaudePid > maxCodexPid ? "claude-code" : "codex";
+  }
 
   return null;
 }

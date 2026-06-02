@@ -115,11 +115,13 @@ export function computeSessionDuration(entries: NormalizedEntry[]): string | nul
   if (timestamps.length < 2) return null;
 
   const durationMs = timestamps[timestamps.length - 1]! - timestamps[0]!;
-  const minutes = Math.floor(durationMs / 60000);
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
   const hours = Math.floor(minutes / 60);
 
   if (hours > 0) return `${hours}h${minutes % 60}m`;
-  return `${minutes}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${totalSeconds}s`;
 }
 
 // ─── 速度指标计算 ────────────────────────────────────────────
@@ -131,9 +133,9 @@ export function computeSpeedMetrics(
 ): SpeedMetricsCollection | null {
   if (entries.length === 0) return null;
 
-  // 按时间排序
+  // 只用 finalized + 非 sidechain 条目，避免流式重复计入
   const sorted = entries
-    .filter((e) => e.timestamp > 0)
+    .filter((e) => e.timestamp > 0 && e.isFinalized && !e.isSidechain)
     .sort((a, b) => a.timestamp - b.timestamp);
 
   if (sorted.length === 0) return null;
