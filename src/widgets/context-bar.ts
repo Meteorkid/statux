@@ -5,6 +5,12 @@ const BAR_WIDTH = 10;
 const FILLED = "█";
 const EMPTY = "░";
 
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return Math.round(n / 1_000) + "k";
+  return String(n);
+}
+
 /** 从上下文数据推算使用百分比（供 context-bar / context-pct / context-pct-usable 共用） */
 export function inferContextPct(ctx: RenderContext): number | null {
   const cw = ctx.data.context_window;
@@ -48,6 +54,10 @@ export const ContextBarWidget: Widget = {
     else if (rawPct > 20) color = "green";
     else color = "white";
 
-    return colorize(`ctx:[${bar}] ${Math.round(rawPct)}%`, color, item.bold);
+    // 超 100% 时显示实际 token 数，帮助判断是否需要手动压缩
+    const pctDisplay = rawPct > 100
+      ? `${Math.round(rawPct)}% (${formatTokens(ctx.tokenMetrics?.contextLength ?? ctx.data.context_window?.total_input_tokens ?? 0)})`
+      : `${Math.round(rawPct)}%`;
+    return colorize(`ctx:[${bar}] ${pctDisplay}`, color, item.bold);
   },
 };
