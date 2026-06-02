@@ -62,12 +62,16 @@ export const TokensTotalWidget: Widget = {
   type: "tokens-total",
   category: "tokens",
   displayName: "Total Tokens",
-  description: "总 token 数 (输入+输出)",
+  description: "总 token 数（输入+输出+缓存，与费用计算一致）",
   defaultColor: "white",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const a = ctx.tokenMetrics?.inputTokens ?? ctx.data.context_window?.total_input_tokens ?? 0;
-    const b = ctx.tokenMetrics?.outputTokens ?? ctx.data.context_window?.total_output_tokens ?? 0;
+    // 优先用 totalTokens（包含 cache），确保与费用计算匹配
+    if (ctx.tokenMetrics?.totalTokens) {
+      return colorize(`total:${formatTokens(ctx.tokenMetrics.totalTokens)}`, item.color || this.defaultColor, item.bold);
+    }
+    const a = ctx.data.context_window?.total_input_tokens ?? 0;
+    const b = ctx.data.context_window?.total_output_tokens ?? 0;
     if (a === 0 && b === 0) return null;
     return colorize(`total:${formatTokens(a + b)}`, item.color || this.defaultColor, item.bold);
   },
