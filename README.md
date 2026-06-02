@@ -9,9 +9,8 @@
 statux 是一个终端状态显示工具，为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex (OpenAI)](https://github.com/openai/codex) 和 [iTerm2](https://iterm2.com/) 提供 AI Agent 的实时状态信息。支持 72 个可配置 Widget、Powerline 渲染、交互式 TUI 配置界面。
 
 ```
-mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░░] 82% │ len:85k
-dir:~/projects/app │ tok:in:45k out:12k │ in-spd:1.2k/s │ out-spd:800/s
-cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
+[CC] mdl:opus-4.7 │ ctx:[████████░░] 82% │ tok:in:45k out:12k cache:30k │ cost:~$0.35 │ time:25m
+git:main │ ±5 │ $/min:$0.01/min │ rl:42% │ tools:Read→Edit
 ```
 
 ---
@@ -61,7 +60,7 @@ cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
 - **本地诊断命令** — `statux doctor` 检查配置、Claude Code、Codex、iTerm2 和 Usage 凭证状态
 - **Anthropic Usage API** — 实时获取 session/weekly 用量数据
 - **多平台二进制** — macOS (arm64/x64) + Linux (x64/arm64)，无依赖独立运行
-- **标签系统** — 每个 Widget 支持 `label` 前缀，无数据时自动显示 `label:none`
+- **标签系统** — 每个 Widget 支持 `label` 前缀，无数据时自动隐藏
 - **10 种颜色** — 支持 black, red, green, yellow, blue, magenta, cyan, white, orange, pink
 
 ---
@@ -215,7 +214,7 @@ statux --watch 3
 | Cache token | ✅ | ✅ |
 | 速度指标 | ✅ | ✅ |
 | 会话时长 | ✅ | ✅ |
-| Git 信息 | ✅ | ✅ (来自 SQLite) |
+| Git 信息 | ✅ | ✅ (bridge 模式: live git; SQLite 模式: 不显示) |
 | 成本估算 | ✅ | ✅ (GPT 定价表) |
 | Context window % | ✅ | ❌ (概念不同) |
 | Rate limits | ✅ | ❌ (概念不同) |
@@ -288,7 +287,7 @@ statux 提供 72 个 Widget，分为 11 个类别。每个 Widget 都支持自�
 |--------|------|------|---------|
 | `context-bar` | `context-bar` | 上下文使用率进度条（含 `ctx:` 标签） | `ctx:[████████░░] 82%` |
 | `context-pct` | `context-pct` | 上下文使用率（纯数字） | `ctx:82%` |
-| `context-length` | `context-length` | 当前上下文长度（始终以 k 为单位） | `len:85k` |
+| `context-length` | `context-length` | 当前上下文长度 | `len:85k` |
 | `context-window` | `context-window` | 上下文窗口总大小 | `win:200k` |
 | `context-pct-usable` | `context-pct-usable` | 可用上下文百分比 | `usable:18%` |
 | `compaction` | `compaction` | 上下文压缩次数 | `compact:2` |
@@ -308,11 +307,11 @@ statux 提供 72 个 Widget，分为 11 个类别。每个 Widget 都支持自�
 
 | Widget | 类型 | 说明 | 输出示例 |
 |--------|------|------|---------|
-| `tokens` | `tokens` | 输入/输出 Token 汇总 | `in:45k out:12k` |
-| `tokens-input` | `tokens-input` | 输入 Token 数量 | `input:45k` |
-| `tokens-output` | `tokens-output` | 输出 Token 数量 | `output:12k` |
-| `tokens-cached` | `tokens-cached` | 缓存命中 Token 数量 | `cached:30k` |
-| `tokens-total` | `tokens-total` | 总 Token 数量 | `total:57k` |
+| `tokens` | `tokens` | 输入/输出/缓存 Token 汇总 | `in:45k out:12k cache:30k` |
+| `tokens-input` | `tokens-input` | 输入 Token 数量 | `in:45k` |
+| `tokens-output` | `tokens-output` | 输出 Token 数量 | `out:12k` |
+| `tokens-cached` | `tokens-cached` | 缓存命中 Token 数量 | `cache:30k` |
+| `tokens-total` | `tokens-total` | 总 Token 数量（含缓存） | `total:87k` |
 | `input-speed` | `input-speed` | 输入 Token 速度 | `in-spd:1.2k/s` |
 | `output-speed` | `output-speed` | 输出 Token 速度 | `out-spd:800/s` |
 | `total-speed` | `total-speed` | 总 Token 速度 | `120/s` |
@@ -348,10 +347,10 @@ statux 提供 72 个 Widget，分为 11 个类别。每个 Widget 都支持自�
 
 | Widget | 类型 | 说明 | 输出示例 |
 |--------|------|------|---------|
-| `git-staged-files` | `git-staged-files` | 已暂存文件数 | `staged:3` |
-| `git-unstaged-files` | `git-unstaged-files` | 未暂存文件数 | `unstaged:2` |
-| `git-untracked-files` | `git-untracked-files` | 未跟踪文件数 | `untracked:1` |
-| `git-clean-status` | `git-clean-status` | 工作区是否干净 | `clean` 或 `dirty` |
+| `git-staged-files` | `git-staged-files` | 已暂存文件数 | `S:3` |
+| `git-unstaged-files` | `git-unstaged-files` | 未暂存文件数 | `U:2` |
+| `git-untracked-files` | `git-untracked-files` | 未跟踪文件数 | `?1` |
+| `git-clean-status` | `git-clean-status` | 工作区是否干净 | `✓ clean` 或 `✗ dirty` |
 
 #### 高级信息
 
@@ -572,7 +571,7 @@ mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░
 
 配置文件路径：`~/.config/statux/settings.json`
 
-### 默认配置（四行布局）
+### 默认配置（双行布局）
 
 ```json
 {
@@ -583,40 +582,24 @@ mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░
       { "id": "s0", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " " } },
       { "id": "model", "type": "model", "label": "mdl", "color": "orange", "merge": "no-padding" },
       { "id": "s1", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "think", "type": "thinking-effort", "label": "think", "color": "green", "merge": "no-padding" },
-      { "id": "s2", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "mem", "type": "free-memory", "color": "yellow", "merge": "no-padding" },
-      { "id": "s3", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
       { "id": "ctxbar", "type": "context-bar", "merge": "no-padding" },
-      { "id": "s4", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "ctxlen", "type": "context-length", "label": "len", "color": "cyan", "merge": "no-padding" }
-    ],
-    [
-      { "id": "cwd", "type": "custom-command", "label": "dir", "color": "cyan", "merge": "no-padding", "metadata": { "command": "pwd | sed \"s|$HOME|~|\"", "maxLength": 60 } },
-      { "id": "s5", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "s2", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
       { "id": "tok", "type": "tokens", "label": "tok", "color": "magenta", "merge": "no-padding" },
-      { "id": "s6", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "ispeed", "type": "input-speed", "label": "in-spd", "color": "orange", "merge": "no-padding" },
-      { "id": "s7", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "ospeed", "type": "output-speed", "label": "out-spd", "color": "green", "merge": "no-padding" }
-    ],
-    [
+      { "id": "s3", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
       { "id": "cost", "type": "cost", "label": "cost", "color": "green", "merge": "no-padding" },
-      { "id": "s8", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "clock", "type": "session-clock", "label": "time", "color": "yellow", "merge": "no-padding" },
-      { "id": "s9", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "tools", "type": "tool-calls", "label": "tools", "color": "blue", "merge": "no-padding" },
-      { "id": "s10", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "wt", "type": "git-worktree", "label": "wt", "color": "red", "merge": "no-padding" },
-      { "id": "s11", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "sk", "type": "skills", "label": "sk", "color": "white", "merge": "no-padding" }
+      { "id": "s4", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "clock", "type": "session-clock", "label": "time", "color": "yellow", "merge": "no-padding" }
     ],
     [
-      { "id": "htoday", "type": "history-today", "color": "red", "merge": "no-padding" },
-      { "id": "s12", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "branch", "type": "git-branch", "label": "git", "color": "cyan", "merge": "no-padding" },
+      { "id": "s5", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "changes", "type": "git-changes", "color": "yellow", "merge": "no-padding" },
+      { "id": "s6", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
       { "id": "crate", "type": "cost-rate", "label": "$/min", "color": "cyan", "merge": "no-padding" },
-      { "id": "s13", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
-      { "id": "trate", "type": "token-rate", "label": "tok/min", "color": "magenta", "merge": "no-padding" }
+      { "id": "s7", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "rl", "type": "rate-limit", "color": "yellow", "merge": "no-padding" },
+      { "id": "s8", "type": "separator", "color": "white", "merge": "no-padding", "metadata": { "separator": " │ " } },
+      { "id": "tools", "type": "tool-calls", "label": "tools", "color": "blue", "merge": "no-padding" }
     ]
   ],
   "renderMode": "normal",
@@ -631,7 +614,7 @@ mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `version` | `number` | `1` | 配置版本号，用于迁移 |
-| `lines` | `Widget[][]` | 三行布局 | 多行 Widget 布局 |
+| `lines` | `Widget[][]` | 双行布局 | 多行 Widget 布局 |
 | `renderMode` | `"normal" \| "powerline"` | `"normal"` | 渲染模式 |
 | `colorLevel` | `0 \| 1 \| 2 \| 3` | `3` | 颜色级别（0=无色, 3=真彩色） |
 | `globalBold` | `boolean` | `true` | 全局粗体 |
@@ -646,7 +629,7 @@ mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░
 |------|------|------|
 | `id` | `string` | 唯一标识符 |
 | `type` | `string` | Widget 类型（见上方目录） |
-| `label` | `string` | 缩写标签，有值时前置 `label:`，无值时显示 `label:none` |
+| `label` | `string` | 缩写标签，有值时前置 `label:`，无值时隐藏 |
 | `color` | `string` | 自定义颜色（覆盖默认值） |
 | `bold` | `boolean` | 是否粗体 |
 | `hide` | `boolean` | 是否隐藏 |
@@ -662,7 +645,7 @@ mdl:opus-4.7 │ think:high │ Mem:12G/36G │ ctx:[████████░
 **`label` 行为：**
 - Widget 有值且文本不以 `label:` 开头 → 前置 `label:` 前缀
 - Widget 有值且文本已以 `label:` 开头 → 不重复添加
-- Widget 返回 null → 显示 `label:none`
+- Widget 返回 null → 隐藏（不显示 `label:none`）
 
 **`merge` 行为：**
 - 默认（不设置）：Widget 前后各加一个空格
