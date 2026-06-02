@@ -28,6 +28,13 @@ async function readStdin(): Promise<string | null> {
   return chunks.join("");
 }
 
+/** 从 StatusJSON 数据生成稳定 session ID */
+function resolveSessionId(data: { session_id?: string; transcript_path?: string; hook_event_name?: string }): string {
+  if (data.session_id) return data.session_id;
+  if (data.transcript_path) return `transcript:${data.transcript_path}`;
+  return `stdin-${data.hook_event_name || "unknown"}`;
+}
+
 /** 单次检测并渲染状态，返回 true 表示成功 */
 async function renderOneshot(): Promise<boolean> {
   const activeTool = detectActiveTool();
@@ -57,8 +64,9 @@ async function renderOneshot(): Promise<boolean> {
   // 直接写入 status.json（备用方案，确保 iTerm2 插件能读取）
   writeStatusJson(ctx.data, ctx.tokenMetrics);
 
-  // 记录会话历史
-  recordRenderContextSession(ctx, `${ctx.tool}-${Date.now()}`, "claude-code");
+  // 使用稳定 session ID，避免每次刷新创建新记录
+  const sessionId = ctx.data.session_id || `oneshot:${ctx.tool}`;
+  recordRenderContextSession(ctx, sessionId, "claude-code");
 
   return true;
 }
@@ -125,6 +133,31 @@ async function main() {
     const { registerAllWidgets: reg } = await import("./widgets");
     reg();
     inkRender(React.createElement(App));
+    return;
+  }
+
+  if (command.type === "doctor") {
+    const { runDoctor } = await import("./cli/doctor");
+    process.exit(runDoctor());
+  }
+
+  if (command.type === "widgets") {
+    registerAllWidgets();
+    const { getAllWidgets } = await import("./widgets/registry");
+    const widgets = getAllWidgets();
+    const byCategory = new Map<string, typeof widgets>();
+    for (const w of widgets) {
+      const list = byCategory.get(w.category) || [];
+      list.push(w);
+      byCategory.set(w.category, list);
+    }
+    for (const [cat, list] of [...byCategory.entries()].sort()) {
+      console.log(`\n\x1b[1m${cat}\x1b[0m`);
+      for (const w of list) {
+        console.log(`  \x1b[36m${w.type.padEnd(22)}\x1b[0m ${w.description}`);
+      }
+    }
+    console.log(`\n\x1b[90m共 ${widgets.length} 个 widget\x1b[0m`);
     return;
   }
 
@@ -208,8 +241,8 @@ async function main() {
   // 直接写入 status.json（备用方案，确保 iTerm2 插件能读取）
   writeStatusJson(ctx.data, ctx.tokenMetrics);
 
-  // 记录会话历史
-  recordRenderContextSession(ctx, data.session_id || `stdin-${Date.now()}`, "claude-code");
+  // 记录会话历史（使用稳定 session ID，避免重复插入）
+  recordRenderContextSession(ctx, resolveSessionId(data), "claude-code");
 
   closeHistoryDb();
 }

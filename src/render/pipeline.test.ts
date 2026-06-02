@@ -40,14 +40,15 @@ describe("renderStatusLines", () => {
   registerWidget(NullWidget);
   registerWidget(ValueWidget);
 
-  test("renders label:none when a labeled widget has no data", () => {
+  test("hides labeled widget when it has no data", () => {
     const lines = renderStatusLines(
       [[{ id: "x", type: "test-null-widget", label: "missing", merge: "no-padding" }]],
       { version: 1, lines: [], renderMode: "normal", colorLevel: 3, globalBold: false, minimalistMode: false },
       context()
     );
 
-    expect(lines.join("\n")).toContain("missing:none");
+    // 无数据时 widget 隐藏，不再显示 label:none
+    expect(lines.join("\n")).not.toContain("missing:none");
   });
 
   test("prepends label to unlabeled widget output", () => {

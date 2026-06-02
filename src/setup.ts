@@ -52,6 +52,15 @@ export function setupIterm2(): void {
   console.log("2. In iTerm2 Preferences > Profiles > Session > Status bar,");
   console.log("   drag 'Agent Status' into the active components");
   console.log("3. Configure Claude Code statusLine:");
-  console.log('   Add to ~/.claude/settings.json:');
-  console.log('   "statusLine": { "type": "command", "command": "statux" }');
+  console.log('   Add to ~/.claude/settings.json (或 settings.local.json):');
+  console.log('   "statusLine": {');
+  console.log('     "type": "command",');
+  console.log('     "command": "/path/to/bun /path/to/statux/src/cli.ts",');
+  console.log('     "refreshInterval": 5');
+  console.log("   }");
+  console.log("");
+  console.log("   Tips:");
+  console.log("   - 用 `which bun` 获取 bun 的绝对路径");
+  console.log("   - refreshInterval 控制刷新频率（秒），建议 5");
+  console.log("   - 运行 `statux doctor` 检查配置是否正确");
 }

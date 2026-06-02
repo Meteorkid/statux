@@ -25,16 +25,15 @@ export function preRenderAllWidgets(
 
       let text = widget.render(item, ctx);
 
-      // label 处理：null 时显示 label:none，有值时前置 label:
+      // label 处理：有值时前置 label:，无值时隐藏（不显示 label:none）
       if (item.label) {
-        const color = item.color || widget.defaultColor;
         if (text === null) {
-          text = colorize(`${item.label}:none`, color, item.bold);
-        } else {
-          const plain = getVisibleText(text);
-          if (!plain.startsWith(item.label + ":")) {
-            text = `${colorize(item.label + ":", color, item.bold)}${text}`;
-          }
+          return { item, text: null, visibleText: "", width: 0 };
+        }
+        const color = item.color || widget.defaultColor;
+        const plain = getVisibleText(text);
+        if (!plain.startsWith(item.label + ":")) {
+          text = `${colorize(item.label + ":", color, item.bold)}${text}`;
         }
       }
 
@@ -95,11 +94,15 @@ export function assembleStatusLine(
   return `\x1b[0m${result}${reset()}`;
 }
 
-/** 从预渲染结果推断终端宽度 */
+/** 推断终端宽度：优先使用实际检测值 */
 function inferTerminalWidth(preRendered: PreRenderedWidget[]): number {
-  // 如果有 flex-separator，无法推断，使用默认值
-  const hasFlex = preRendered.some((w) => w.item.type === "flex-separator");
-  if (hasFlex) return DEFAULT_TERMINAL_WIDTH;
+  // 尝试从终端获取实际宽度
+  try {
+    const cols = process.stdout.columns;
+    if (cols && cols > 0) return cols;
+  } catch {
+    // stdout 不是 TTY
+  }
   return DEFAULT_TERMINAL_WIDTH;
 }
 

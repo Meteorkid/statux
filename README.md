@@ -58,6 +58,7 @@ cost:$0.35 │ time:25m │ tools:Read→Edit │ wt:main │ sk:3 skills
 - **Codex 支持** — 自动检测 Codex/Claude Code 进程，通过 SQLite + hooks bridge 获取会话数据
 - **Powerline 渲染** — 内置 dark/ocean 主题，箭头分隔符
 - **TUI 配置界面** — 基于 Ink (React for CLI) 的交互式配置，支持搜索、排序、预览
+- **本地诊断命令** — `statux doctor` 检查配置、Claude Code、Codex、iTerm2 和 Usage 凭证状态
 - **Anthropic Usage API** — 实时获取 session/weekly 用量数据
 - **多平台二进制** — macOS (arm64/x64) + Linux (x64/arm64)，无依赖独立运行
 - **标签系统** — 每个 Widget 支持 `label` 前缀，无数据时自动显示 `label:none`
@@ -109,11 +110,11 @@ git clone https://github.com/Meteorkid/statux.git
 cd statux
 bun install
 
-# 单平台构建
+# 多平台构建
 bun run build
 
-# 多平台构建
-bun run build:all
+# 当前平台本地构建
+bun run build:local
 ```
 
 ---
@@ -126,6 +127,9 @@ echo '{"model":{"display_name":"opus-4.7"},"context_window":{"used_percentage":4
 
 # 启动 TUI 配置界面
 statux --tui
+
+# 检查本地集成状态
+statux doctor
 
 # 安装 iTerm2 插件
 statux --setup
@@ -706,6 +710,7 @@ statux (TypeScript/Bun)
 │   ├── cli.ts                 # CLI 入口：statusLine/oneshot/watch/TUI 模式
 │   ├── cli/
 │   │   ├── args.ts            # CLI 参数解析
+│   │   ├── doctor.ts          # 本地集成诊断
 │   │   ├── output.ts          # iTerm2 OSC + status.json 输出
 │   │   └── session-history.ts # 会话历史输出与记录
 │   ├── setup.ts               # iTerm2 plugin 安装
@@ -777,11 +782,11 @@ bun install
 # 类型检查
 bun run typecheck
 
-# 单平台构建（当前平台）
-bun run build
+# 当前平台本地构建
+bun run build:local
 
 # 多平台构建
-bun run build:all
+bun run build
 ```
 
 ### 发布流程
