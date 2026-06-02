@@ -1,11 +1,6 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-
-function renderProgressBar(pct: number, width: number): string {
-  const filled = Math.round((pct / 100) * width);
-  const empty = width - filled;
-  return `[${"█".repeat(filled)}${"░".repeat(empty)}]`;
-}
+import { renderProgressBar } from "./format-utils";
 
 export const SessionUsageWidget: Widget = {
   type: "session-usage",

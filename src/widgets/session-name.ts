@@ -1,27 +1,38 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, statSync } from "fs";
 
-/** 从 JSONL 中提取会话名称（ai-title 条目） */
+// mtime 缓存：避免每次渲染都读整个 JSONL
+const nameCache = new Map<string, { mtime: number; name: string | null }>();
+
+/** 从 JSONL 中提取会话名称（ai-title 条目），带 mtime 缓存 */
 function getSessionName(transcriptPath: string): string | null {
   if (!existsSync(transcriptPath)) return null;
+
+  const mtime = statSync(transcriptPath).mtimeMs;
+  const cached = nameCache.get(transcriptPath);
+  if (cached && cached.mtime === mtime) return cached.name;
 
   const content = readFileSync(transcriptPath, "utf-8");
   const lines = content.split("\n").reverse();
 
+  let name: string | null = null;
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     try {
       const entry = JSON.parse(trimmed);
       if (entry.type === "ai-title" && entry.title) {
-        return entry.title;
+        name = entry.title;
+        break;
       }
     } catch {
       // skip
     }
   }
-  return null;
+
+  nameCache.set(transcriptPath, { mtime, name });
+  return name;
 }
 
 export const SessionNameWidget: Widget = {

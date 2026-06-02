@@ -1,15 +1,23 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, statSync } from "fs";
 
 interface ToolCallEntry {
   tool: string;
   timestamp: string;
 }
 
-/** 从 JSONL 中提取最近的工具调用 */
+// mtime 缓存：避免每次渲染都读整个 JSONL
+const CACHE_LIMIT = 20;
+const callsCache = new Map<string, { mtime: number; calls: ToolCallEntry[] }>();
+
+/** 从 JSONL 中提取最近的工具调用，带 mtime 缓存 */
 function getRecentToolCalls(transcriptPath: string, limit: number): ToolCallEntry[] {
   if (!existsSync(transcriptPath)) return [];
+
+  const mtime = statSync(transcriptPath).mtimeMs;
+  const cached = callsCache.get(transcriptPath);
+  if (cached && cached.mtime === mtime) return cached.calls.slice(0, limit);
 
   const content = readFileSync(transcriptPath, "utf-8");
   const calls: ToolCallEntry[] = [];
@@ -17,7 +25,7 @@ function getRecentToolCalls(transcriptPath: string, limit: number): ToolCallEntr
   // 从后往前扫描，找到最近的工具调用
   const lines = content.split("\n").reverse();
   for (const line of lines) {
-    if (calls.length >= limit) break;
+    if (calls.length >= CACHE_LIMIT) break;
     const trimmed = line.trim();
     if (!trimmed) continue;
     try {
@@ -34,7 +42,8 @@ function getRecentToolCalls(transcriptPath: string, limit: number): ToolCallEntr
     }
   }
 
-  return calls;
+  callsCache.set(transcriptPath, { mtime, calls });
+  return calls.slice(0, limit);
 }
 
 export const ToolCallsWidget: Widget = {

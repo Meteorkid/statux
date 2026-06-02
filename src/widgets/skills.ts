@@ -1,6 +1,6 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, statSync } from "fs";
 
 interface SkillsMetrics {
   lastSkill: string | null;
@@ -8,9 +8,17 @@ interface SkillsMetrics {
   uniqueSkills: string[];
 }
 
+// mtime 缓存：避免每次渲染都读整个 JSONL
+const metricsCache = new Map<string, { mtime: number; metrics: SkillsMetrics }>();
+
 function getSkillsMetrics(transcriptPath: string): SkillsMetrics {
+  if (!existsSync(transcriptPath)) return { lastSkill: null, totalInvocations: 0, uniqueSkills: [] };
+
+  const mtime = statSync(transcriptPath).mtimeMs;
+  const cached = metricsCache.get(transcriptPath);
+  if (cached && cached.mtime === mtime) return cached.metrics;
+
   const result: SkillsMetrics = { lastSkill: null, totalInvocations: 0, uniqueSkills: [] };
-  if (!existsSync(transcriptPath)) return result;
 
   try {
     const content = readFileSync(transcriptPath, "utf-8");
@@ -40,6 +48,7 @@ function getSkillsMetrics(transcriptPath: string): SkillsMetrics {
     result.uniqueSkills = Array.from(seen);
   } catch { /* skip */ }
 
+  metricsCache.set(transcriptPath, { mtime, metrics: result });
   return result;
 }
 
@@ -73,8 +82,6 @@ export const SkillsWidget: Widget = {
       case "count":
       default: {
         if (metrics.totalInvocations === 0) return null;
-        const hide = item.metadata?.hideWhenZero;
-        if (hide && metrics.totalInvocations === 0) return null;
         return colorize(
           `${metrics.totalInvocations} skill${metrics.totalInvocations > 1 ? "s" : ""}`,
           item.color || this.defaultColor,
