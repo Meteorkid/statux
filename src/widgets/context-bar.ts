@@ -33,9 +33,10 @@ export const ContextBarWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const pct = inferContextPct(ctx);
-    if (pct == null) return null;
+    const rawPct = inferContextPct(ctx);
+    if (rawPct == null) return null;
 
+    const pct = Math.max(0, Math.min(100, rawPct));
     const filled = Math.round((pct / 100) * BAR_WIDTH);
     const empty = BAR_WIDTH - filled;
     const bar = FILLED.repeat(filled) + EMPTY.repeat(empty);

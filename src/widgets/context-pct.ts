@@ -10,8 +10,9 @@ export const ContextPctWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const pct = inferContextPct(ctx);
-    if (pct == null) return null;
+    const rawPct = inferContextPct(ctx);
+    if (rawPct == null) return null;
+    const pct = Math.max(0, Math.min(999, rawPct)); // 允许超 100% 显示，但不溢出
 
     let color = item.color || this.defaultColor;
     if (pct > 80) color = "red";
