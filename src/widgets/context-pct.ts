@@ -1,5 +1,6 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
+import { inferContextPct } from "./context-bar";
 
 export const ContextPctWidget: Widget = {
   type: "context-pct",
@@ -9,10 +10,7 @@ export const ContextPctWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const cw = ctx.data.context_window;
-    if (!cw) return null;
-
-    const pct = cw.used_percentage ?? (cw.remaining_percentage != null ? 100 - cw.remaining_percentage : null);
+    const pct = inferContextPct(ctx);
     if (pct == null) return null;
 
     let color = item.color || this.defaultColor;
