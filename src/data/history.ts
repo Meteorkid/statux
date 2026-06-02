@@ -187,7 +187,7 @@ export interface DailySummary {
   totalCostUsd: number;
 }
 
-/** 获取今日汇总 */
+/** 获取今日汇总（按最后活动时间 ended_at 归属，跨天会话计入活动当天） */
 export function getTodaySummary(): SessionSummary {
   const database = getDb();
   const startOfDay = new Date();
@@ -200,14 +200,14 @@ export function getTodaySummary(): SessionSummary {
               COALESCE(SUM(total_tokens), 0) as totalTokens,
               COALESCE(SUM(cost_usd), 0) as totalCostUsd,
               COALESCE(SUM(duration_seconds), 0) as totalDurationSeconds
-       FROM sessions WHERE created_at >= ?`
+       FROM sessions WHERE ended_at >= ?`
     )
     .get(startMs) as SessionSummary;
 
   return row ?? { sessionCount: 0, totalTokens: 0, totalCostUsd: 0, totalDurationSeconds: 0 };
 }
 
-/** 获取本周汇总 */
+/** 获取本周汇总（按最后活动时间 ended_at 归属） */
 export function getWeekSummary(): SessionSummary {
   const database = getDb();
   const now = new Date();
@@ -223,7 +223,7 @@ export function getWeekSummary(): SessionSummary {
               COALESCE(SUM(total_tokens), 0) as totalTokens,
               COALESCE(SUM(cost_usd), 0) as totalCostUsd,
               COALESCE(SUM(duration_seconds), 0) as totalDurationSeconds
-       FROM sessions WHERE created_at >= ?`
+       FROM sessions WHERE ended_at >= ?`
     )
     .get(startMs) as SessionSummary;
 
@@ -238,12 +238,12 @@ export function getDailySummaries(days: number = 7): DailySummary[] {
   const rows = database
     .query(
       `SELECT
-        date(created_at / 1000, 'unixepoch', 'localtime') as date,
+        date(ended_at / 1000, 'unixepoch', 'localtime') as date,
         COUNT(*) as sessionCount,
         SUM(total_tokens) as totalTokens,
         SUM(cost_usd) as totalCostUsd
        FROM sessions
-       WHERE created_at >= ?
+       WHERE ended_at >= ?
        GROUP BY date
        ORDER BY date DESC`
     )

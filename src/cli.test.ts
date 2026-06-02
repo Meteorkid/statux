@@ -4,7 +4,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 describe("CLI stdin mode", () => {
-  test("renders a minimal status JSON with a custom config", { timeout: 15000 }, () => {
+  test("renders a minimal status JSON with a custom config", () => {
     const home = mkdtempSync(join(tmpdir(), "statux-home-"));
     const configPath = join(home, "settings.json");
     writeFileSync(
@@ -27,6 +27,7 @@ describe("CLI stdin mode", () => {
       cwd: process.cwd(),
       env: { ...process.env, HOME: home, TERM_PROGRAM: "" },
       stdin: Bun.file(inputPath),
+      timeout: 15000,
     });
 
     expect(result.exitCode).toBe(0);
