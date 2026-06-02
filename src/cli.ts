@@ -35,6 +35,13 @@ function resolveSessionId(data: { session_id?: string; transcript_path?: string;
   return `stdin-${data.hook_event_name || "unknown"}`;
 }
 
+/** 从 transcript 路径提取稳定的 session ID（UUID 部分） */
+function sessionIdFromTranscript(transcriptPath: string | undefined): string | null {
+  if (!transcriptPath) return null;
+  const match = transcriptPath.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/);
+  return match ? match[1]! : null;
+}
+
 /** 单次检测并渲染状态，返回 true 表示成功 */
 async function renderOneshot(): Promise<boolean> {
   const activeTool = detectActiveTool();
@@ -65,7 +72,10 @@ async function renderOneshot(): Promise<boolean> {
   writeStatusJson(ctx.data, ctx.tokenMetrics);
 
   // 使用稳定 session ID，避免每次刷新创建新记录
-  const sessionId = ctx.data.session_id || `oneshot:${ctx.tool}`;
+  // 优先用 session_id → transcript UUID → oneshot fallback
+  const sessionId = ctx.data.session_id
+    || sessionIdFromTranscript(ctx.data.transcript_path)
+    || `oneshot:${ctx.tool}`;
   recordRenderContextSession(ctx, sessionId, "claude-code");
 
   return true;
