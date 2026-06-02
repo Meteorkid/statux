@@ -36,17 +36,18 @@ export const ContextBarWidget: Widget = {
     const rawPct = inferContextPct(ctx);
     if (rawPct == null) return null;
 
-    const pct = Math.max(0, Math.min(100, rawPct));
-    const filled = Math.round((pct / 100) * BAR_WIDTH);
+    // bar 视觉上限 100%，但百分比显示实际值（可以 >100% 表示溢出）
+    const barPct = Math.max(0, Math.min(100, rawPct));
+    const filled = Math.round((barPct / 100) * BAR_WIDTH);
     const empty = BAR_WIDTH - filled;
     const bar = FILLED.repeat(filled) + EMPTY.repeat(empty);
 
     let color: string;
-    if (pct > 80) color = "red";
-    else if (pct > 60) color = "magenta";
-    else if (pct > 20) color = "green";
+    if (rawPct > 80) color = "red";
+    else if (rawPct > 60) color = "magenta";
+    else if (rawPct > 20) color = "green";
     else color = "white";
 
-    return colorize(`ctx:[${bar}] ${Math.round(pct)}%`, color, item.bold);
+    return colorize(`ctx:[${bar}] ${Math.round(rawPct)}%`, color, item.bold);
   },
 };
