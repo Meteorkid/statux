@@ -71,11 +71,32 @@ export interface SessionRecord {
   endedAt?: number;
 }
 
+/** 查找可能重复的 session（同模型、同 token 数据、5 分钟内） */
+function findDuplicateSession(
+  database: Database,
+  model: string | undefined,
+  inputTokens: number,
+  outputTokens: number,
+  cacheReadTokens: number
+): { id: string } | null {
+  if (!model || (inputTokens === 0 && outputTokens === 0)) return null;
+  const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+  return database
+    .query(
+      `SELECT id FROM sessions
+       WHERE model = ? AND input_tokens = ? AND output_tokens = ? AND cache_read_tokens = ?
+         AND created_at >= ?
+       ORDER BY created_at DESC LIMIT 1`
+    )
+    .get(model, inputTokens, outputTokens, cacheReadTokens, fiveMinAgo) as { id: string } | null;
+}
+
 /**
- * 记录一次会话（增量模式）
+ * 记录一次会话（增量模式 + 去重）
  *
  * 累计 cost 来自 JSONL 全量数据，每次 render 都在增长（cache_read 持续累积）。
  * 为了历史汇总准确，只记录 cost 的增量（本次 - 上次），避免重复计费。
+ * 同时检查是否有重复 session（同模型+token 数据），避免同一会话多条记录。
  */
 export function recordSession(session: SessionRecord): void {
   const database = getDb();
@@ -97,10 +118,22 @@ export function recordSession(session: SessionRecord): void {
     }
   }
 
+  // 去重：检查是否已有相同 token 数据的 session
+  let sessionId = session.id;
+  if (metrics && session.model) {
+    const dup = findDuplicateSession(
+      database, session.model,
+      metrics.inputTokens, metrics.outputTokens, metrics.cacheReadTokens
+    );
+    if (dup && dup.id !== sessionId) {
+      sessionId = dup.id;
+    }
+  }
+
   // 读取上次的累计快照和已累加费用
   const existing = database
     .query(`SELECT cost_usd, cost_cumulative_snapshot FROM sessions WHERE id = ?`)
-    .get(session.id) as { cost_usd: number; cost_cumulative_snapshot: number } | undefined;
+    .get(sessionId) as { cost_usd: number; cost_cumulative_snapshot: number } | undefined;
 
   const previousSnapshot = existing?.cost_cumulative_snapshot ?? 0;
   const accumulatedCost = existing?.cost_usd ?? 0;
@@ -110,7 +143,7 @@ export function recordSession(session: SessionRecord): void {
   const newAccumulatedCost = accumulatedCost + delta;
 
   const createdAt = existing
-    ? (database.query(`SELECT created_at FROM sessions WHERE id = ?`).get(session.id) as { created_at: number }).created_at
+    ? (database.query(`SELECT created_at FROM sessions WHERE id = ?`).get(sessionId) as { created_at: number }).created_at
     : now;
 
   database.run(
@@ -119,7 +152,7 @@ export function recordSession(session: SessionRecord): void {
      duration_seconds, started_at, ended_at, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      session.id,
+      sessionId,
       session.tool,
       session.model ?? null,
       session.project ?? null,
