@@ -53,29 +53,6 @@ function getTokenFromKeychain(): string | null {
     }
   } catch { /* not found */ }
 
-  // 尝试多个 Keychain 条目
-  try {
-    const dump = execSync("security dump-keychain 2>/dev/null", {
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-
-    const services = dump
-      .split('"Claude Code-credentials')
-      .slice(1)
-      .map((_, i) => `Claude Code-credentials${i > 0 ? `-${i}` : ""}`);
-
-    for (const service of services) {
-      try {
-        const token = execSync(
-          `security find-generic-password -s "${service}" -w 2>/dev/null`,
-          { encoding: "utf-8", timeout: 5000 }
-        ).trim();
-        if (token) return token;
-      } catch { /* skip */ }
-    }
-  } catch { /* skip */ }
-
   return null;
 }
 

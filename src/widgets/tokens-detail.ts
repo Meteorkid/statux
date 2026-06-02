@@ -70,9 +70,10 @@ export const TokensTotalWidget: Widget = {
     if (ctx.tokenMetrics?.totalTokens) {
       return colorize(`total:${formatTokens(ctx.tokenMetrics.totalTokens)}`, item.color || this.defaultColor, item.bold);
     }
+    // 回退：用 StatusJSON 的数据（不含 cache，但比不显示好）
     const a = ctx.data.context_window?.total_input_tokens ?? 0;
     const b = ctx.data.context_window?.total_output_tokens ?? 0;
     if (a === 0 && b === 0) return null;
-    return colorize(`total:${formatTokens(a + b)}`, item.color || this.defaultColor, item.bold);
+    return colorize(`total:${formatTokens(a + b)}*`, item.color || this.defaultColor, item.bold);
   },
 };

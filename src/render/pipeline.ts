@@ -60,10 +60,29 @@ export function assembleStatusLine(
   // 计算 flex-separator 宽度
   const flexWidth = calculateFlexWidth(width, preRendered);
 
+  // 预处理：移除相邻隐藏 widget 旁边的孤立分隔符
+  const visible = preRendered.filter((w, i) => {
+    if (w.text !== null) return true;
+    // widget 被隐藏，标记相邻分隔符也跳过
+    return false;
+  });
+
+  // 移除孤立分隔符（前后都是 null 或分隔符的分隔符）
+  const cleaned = visible.filter((w, i) => {
+    if (w.item.type !== "separator") return true;
+    const prev = i > 0 ? visible[i - 1] : null;
+    const next = i < visible.length - 1 ? visible[i + 1] : null;
+    // 如果前后都是分隔符或边界，这个分隔符是孤立的
+    const prevIsSep = !prev || prev.item.type === "separator";
+    const nextIsSep = !next || next.item.type === "separator";
+    if (prevIsSep && nextIsSep) return false;
+    return true;
+  });
+
   // 组装各 widget 文本
   const parts: string[] = [];
 
-  for (const widget of preRendered) {
+  for (const widget of cleaned) {
     if (widget.text === null) continue;
 
     if (widget.item.type === "flex-separator") {

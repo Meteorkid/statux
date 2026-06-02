@@ -8,6 +8,28 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
 import { getTodaySummary, getWeekSummary } from "../data/history";
+import type { SessionSummary } from "../data/history";
+
+// TTL 缓存：避免每次 render 都查 SQLite
+const CACHE_TTL_MS = 10_000;
+let todayCache: { data: SessionSummary; expiresAt: number } | null = null;
+let weekCache: { data: SessionSummary; expiresAt: number } | null = null;
+
+function cachedTodaySummary(): SessionSummary {
+  const now = Date.now();
+  if (todayCache && todayCache.expiresAt > now) return todayCache.data;
+  const data = getTodaySummary();
+  todayCache = { data, expiresAt: now + CACHE_TTL_MS };
+  return data;
+}
+
+function cachedWeekSummary(): SessionSummary {
+  const now = Date.now();
+  if (weekCache && weekCache.expiresAt > now) return weekCache.data;
+  const data = getWeekSummary();
+  weekCache = { data, expiresAt: now + CACHE_TTL_MS };
+  return data;
+}
 
 export const HistoryTodayWidget: Widget = {
   type: "history-today",
@@ -17,7 +39,7 @@ export const HistoryTodayWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, _ctx: RenderContext): string | null {
-    const summary = getTodaySummary();
+    const summary = cachedTodaySummary();
     if (summary.sessionCount === 0) return null;
 
     const cost = summary.totalCostUsd < 0.01
@@ -38,7 +60,7 @@ export const HistoryWeekWidget: Widget = {
   defaultColor: "magenta",
 
   render(item: WidgetItem, _ctx: RenderContext): string | null {
-    const summary = getWeekSummary();
+    const summary = cachedWeekSummary();
     if (summary.sessionCount === 0) return null;
 
     const cost = summary.totalCostUsd < 0.01
@@ -59,7 +81,7 @@ export const HistoryCostWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, _ctx: RenderContext): string | null {
-    const summary = getTodaySummary();
+    const summary = cachedTodaySummary();
     if (summary.sessionCount === 0) return null;
 
     const cost = summary.totalCostUsd < 0.01
