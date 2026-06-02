@@ -39,6 +39,7 @@ function getDb(): Database {
       cache_read_tokens INTEGER DEFAULT 0,
       total_tokens INTEGER DEFAULT 0,
       cost_usd REAL DEFAULT 0,
+      cost_cumulative_snapshot REAL DEFAULT 0,
       duration_seconds INTEGER DEFAULT 0,
       started_at INTEGER,
       ended_at INTEGER,
@@ -49,6 +50,9 @@ function getDb(): Database {
     CREATE INDEX IF NOT EXISTS idx_sessions_tool ON sessions(tool);
     CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project);
   `);
+
+  // 迁移：为已有表添加新列（如果不存在）
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN cost_cumulative_snapshot REAL DEFAULT 0`); } catch { /* 已存在 */ }
 
   return db;
 }
@@ -67,18 +71,23 @@ export interface SessionRecord {
   endedAt?: number;
 }
 
-/** 记录一次会话 */
+/**
+ * 记录一次会话（增量模式）
+ *
+ * 累计 cost 来自 JSONL 全量数据，每次 render 都在增长（cache_read 持续累积）。
+ * 为了历史汇总准确，只记录 cost 的增量（本次 - 上次），避免重复计费。
+ */
 export function recordSession(session: SessionRecord): void {
   const database = getDb();
   const now = Date.now();
   const metrics = session.tokenMetrics;
 
-  // 如果有模型和 token 数据但没有费用，自动计算
-  let costUsd = session.costUsd ?? 0;
-  if (costUsd === 0 && session.model && metrics) {
+  // 如果有模型和 token 数据但没有费用，自动计算（累计值）
+  let cumulativeCost = session.costUsd ?? 0;
+  if (cumulativeCost === 0 && session.model && metrics) {
     const pricing = getModelPricing(session.model);
     if (pricing) {
-      costUsd = computeCostFromTokens(
+      cumulativeCost = computeCostFromTokens(
         metrics.inputTokens,
         metrics.outputTokens,
         metrics.cacheCreationTokens,
@@ -88,11 +97,27 @@ export function recordSession(session: SessionRecord): void {
     }
   }
 
+  // 读取上次的累计快照和已累加费用
+  const existing = database
+    .query(`SELECT cost_usd, cost_cumulative_snapshot FROM sessions WHERE id = ?`)
+    .get(session.id) as { cost_usd: number; cost_cumulative_snapshot: number } | undefined;
+
+  const previousSnapshot = existing?.cost_cumulative_snapshot ?? 0;
+  const accumulatedCost = existing?.cost_usd ?? 0;
+
+  // 增量 = 当前累计 - 上次快照（只取正增量，压缩导致的回退不计）
+  const delta = Math.max(0, cumulativeCost - previousSnapshot);
+  const newAccumulatedCost = accumulatedCost + delta;
+
+  const createdAt = existing
+    ? (database.query(`SELECT created_at FROM sessions WHERE id = ?`).get(session.id) as { created_at: number }).created_at
+    : now;
+
   database.run(
     `INSERT OR REPLACE INTO sessions (id, tool, model, project, input_tokens, output_tokens,
-     cache_creation_tokens, cache_read_tokens, total_tokens, cost_usd, duration_seconds,
-     started_at, ended_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     cache_creation_tokens, cache_read_tokens, total_tokens, cost_usd, cost_cumulative_snapshot,
+     duration_seconds, started_at, ended_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
       session.tool,
@@ -103,11 +128,12 @@ export function recordSession(session: SessionRecord): void {
       metrics?.cacheCreationTokens ?? 0,
       metrics?.cacheReadTokens ?? 0,
       metrics?.totalTokens ?? 0,
-      costUsd,
+      newAccumulatedCost,
+      cumulativeCost,
       session.durationSeconds ?? 0,
       session.startedAt ?? now,
       session.endedAt ?? now,
-      now,
+      createdAt,
     ]
   );
 }
