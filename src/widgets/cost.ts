@@ -8,6 +8,51 @@ function getModelId(ctx: RenderContext): string {
   return model?.id || model?.display_name || "";
 }
 
+/**
+ * 计算会话费用（共享逻辑）
+ * 同时参考 statusLine 与 JSONL，取较大值确保压缩上下文后不丢失。
+ * 返回 { cost, isEstimated }，cost 为 null 表示无法计算。
+ */
+export function computeSessionCost(ctx: RenderContext): { cost: number | null; isEstimated: boolean } {
+  const modelId = getModelId(ctx);
+  if (!modelId) {
+    return { cost: ctx.data.cost?.total_cost_usd ?? null, isEstimated: false };
+  }
+
+  const pricing = getModelPricing(modelId);
+  if (!pricing) {
+    return { cost: ctx.data.cost?.total_cost_usd ?? null, isEstimated: false };
+  }
+
+  let costFromStatusLine: number | null = null;
+  let costFromJsonl: number | null = null;
+
+  // 数据源 1：statusLine context_window
+  const cw = ctx.data.context_window;
+  const totalIn = cw?.total_input_tokens;
+  const totalOut = cw?.total_output_tokens;
+  if (totalIn != null || totalOut != null) {
+    costFromStatusLine = computeCostFromTokens(totalIn ?? 0, totalOut ?? 0, 0, 0, pricing);
+  }
+
+  // 数据源 2：JSONL 解析（含 cache tokens）
+  if (ctx.tokenMetrics) {
+    costFromJsonl = computeCostFromTokens(
+      ctx.tokenMetrics.inputTokens,
+      ctx.tokenMetrics.outputTokens,
+      ctx.tokenMetrics.cacheCreationTokens,
+      ctx.tokenMetrics.cacheReadTokens,
+      pricing
+    );
+  }
+
+  if (costFromStatusLine != null || costFromJsonl != null) {
+    return { cost: Math.max(costFromStatusLine ?? 0, costFromJsonl ?? 0), isEstimated: true };
+  }
+
+  return { cost: ctx.data.cost?.total_cost_usd ?? null, isEstimated: false };
+}
+
 export const CostWidget: Widget = {
   type: "cost",
   category: "session",
@@ -16,57 +61,7 @@ export const CostWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    let cost: number | null = null;
-    let isEstimated = false;
-
-    const modelId = getModelId(ctx);
-
-    if (modelId) {
-      const pricing = getModelPricing(modelId);
-      if (pricing) {
-        // 同时计算两个数据源的费用，取较大值
-        // — token 数是单调递增的，更大的值更接近真实的会话累计
-        let costFromStatusLine: number | null = null;
-        let costFromJsonl: number | null = null;
-
-        // 数据源 1：statusLine context_window
-        const cw = ctx.data.context_window;
-        const totalIn = cw?.total_input_tokens;
-        const totalOut = cw?.total_output_tokens;
-        if (totalIn != null || totalOut != null) {
-          costFromStatusLine = computeCostFromTokens(
-            totalIn ?? 0,
-            totalOut ?? 0,
-            0,
-            0,
-            pricing
-          );
-        }
-
-        // 数据源 2：JSONL 解析（含 cache tokens）
-        if (ctx.tokenMetrics) {
-          costFromJsonl = computeCostFromTokens(
-            ctx.tokenMetrics.inputTokens,
-            ctx.tokenMetrics.outputTokens,
-            ctx.tokenMetrics.cacheCreationTokens,
-            ctx.tokenMetrics.cacheReadTokens,
-            pricing
-          );
-        }
-
-        // 取两者较大值，确保压缩上下文后费用不会回退
-        if (costFromStatusLine != null || costFromJsonl != null) {
-          cost = Math.max(costFromStatusLine ?? 0, costFromJsonl ?? 0);
-          isEstimated = true;
-        }
-      }
-    }
-
-    // 最终回退：使用 Claude Code 客户端提供的费用
-    if (cost == null) {
-      cost = ctx.data.cost?.total_cost_usd ?? null;
-    }
-
+    const { cost, isEstimated } = computeSessionCost(ctx);
     if (cost == null) return null;
 
     const formatted = cost < 0.01 ? "<$0.01" : `$${cost.toFixed(2)}`;

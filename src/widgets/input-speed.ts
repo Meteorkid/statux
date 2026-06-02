@@ -19,11 +19,11 @@ export const InputSpeedWidget: Widget = {
     let speed: number | null = null;
 
     if (ctx.windowedSpeedMetrics && windowSec > 0) {
-      const windowData = ctx.windowedSpeedMetrics[windowSec];
-      if (windowData) speed = windowData.tokensPerSecond;
+      const windowData = ctx.windowedSpeedMetrics[String(windowSec)];
+      if (windowData) speed = windowData.inputTokensPerSecond;
     }
     if (speed == null && ctx.speedMetrics) {
-      speed = ctx.speedMetrics.tokensPerSecond;
+      speed = ctx.speedMetrics.inputTokensPerSecond;
     }
     if (speed == null || speed === 0) return null;
     return colorize(formatSpeed(speed), item.color || this.defaultColor, item.bold);

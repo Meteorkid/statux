@@ -15,6 +15,8 @@ export interface TokenMetrics {
 /** 速度指标 */
 export interface SpeedMetrics {
   tokensPerSecond: number;
+  inputTokensPerSecond: number;
+  outputTokensPerSecond: number;
 }
 
 /** 速度指标集合 */

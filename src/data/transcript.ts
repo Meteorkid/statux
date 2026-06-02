@@ -138,22 +138,27 @@ export function computeSpeedMetrics(
 
   if (sorted.length === 0) return null;
 
-  let totalTokens = 0;
-  const tokenEvents: { tokens: number; time: number }[] = [];
+  let totalInput = 0;
+  let totalOutput = 0;
+  const tokenEvents: { input: number; output: number; time: number }[] = [];
 
   for (const entry of sorted) {
-    const tokens = entry.inputTokens + entry.outputTokens;
-    totalTokens += tokens;
-    tokenEvents.push({ tokens, time: entry.timestamp });
+    totalInput += entry.inputTokens;
+    totalOutput += entry.outputTokens;
+    tokenEvents.push({ input: entry.inputTokens, output: entry.outputTokens, time: entry.timestamp });
   }
 
   const firstTime = sorted[0]!.timestamp;
   const lastTime = sorted[sorted.length - 1]!.timestamp;
   const durationSec = (lastTime - firstTime) / 1000;
 
-  const sessionAverage: SpeedMetrics = {
-    tokensPerSecond: durationSec > 0 ? totalTokens / durationSec : 0,
-  };
+  const makeSpeedMetrics = (input: number, output: number, duration: number): SpeedMetrics => ({
+    tokensPerSecond: duration > 0 ? (input + output) / duration : 0,
+    inputTokensPerSecond: duration > 0 ? input / duration : 0,
+    outputTokensPerSecond: duration > 0 ? output / duration : 0,
+  });
+
+  const sessionAverage = makeSpeedMetrics(totalInput, totalOutput, durationSec);
 
   const windowed: Record<string, SpeedMetrics> = {};
   const now = Date.now();
@@ -161,15 +166,14 @@ export function computeSpeedMetrics(
   for (const w of windows) {
     const cutoff = now - w * 1000;
     const windowEvents = tokenEvents.filter((t) => t.time >= cutoff);
-    const windowTokens = windowEvents.reduce((sum, t) => sum + t.tokens, 0);
+    const windowInput = windowEvents.reduce((sum, t) => sum + t.input, 0);
+    const windowOutput = windowEvents.reduce((sum, t) => sum + t.output, 0);
     const windowDuration =
       windowEvents.length > 1
         ? (windowEvents[windowEvents.length - 1]!.time - windowEvents[0]!.time) / 1000
         : w;
 
-    windowed[String(w)] = {
-      tokensPerSecond: windowDuration > 0 ? windowTokens / windowDuration : 0,
-    };
+    windowed[String(w)] = makeSpeedMetrics(windowInput, windowOutput, windowDuration);
   }
 
   return { sessionAverage, windowed };

@@ -6,7 +6,7 @@
 
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { getModelPricing, computeCostFromTokens } from "../data/model-pricing";
+import { computeSessionCost } from "./cost";
 
 /** 从会话时长字符串解析分钟数 */
 function parseDurationToMinutes(duration: string | null): number {
@@ -24,23 +24,11 @@ export const CostRateWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    if (!ctx.tokenMetrics || !ctx.sessionDuration) return null;
+    if (!ctx.sessionDuration) return null;
 
-    const modelId = typeof ctx.data.model === "string"
-      ? ctx.data.model
-      : ctx.data.model?.id || ctx.data.model?.display_name || "";
-    if (!modelId) return null;
-
-    const pricing = getModelPricing(modelId);
-    if (!pricing) return null;
-
-    const cost = computeCostFromTokens(
-      ctx.tokenMetrics.inputTokens,
-      ctx.tokenMetrics.outputTokens,
-      ctx.tokenMetrics.cacheCreationTokens,
-      ctx.tokenMetrics.cacheReadTokens,
-      pricing
-    );
+    // 使用与 cost widget 相同的双源取大逻辑
+    const { cost } = computeSessionCost(ctx);
+    if (cost == null || cost <= 0) return null;
 
     const minutes = parseDurationToMinutes(ctx.sessionDuration);
     if (minutes <= 0) return null;
@@ -99,17 +87,8 @@ export const SessionEfficiencyWidget: Widget = {
 
     let costStr = "";
     if (modelId) {
-      const pricing = getModelPricing(modelId);
-      if (pricing) {
-        const cost = computeCostFromTokens(
-          ctx.tokenMetrics.inputTokens,
-          ctx.tokenMetrics.outputTokens,
-          ctx.tokenMetrics.cacheCreationTokens,
-          ctx.tokenMetrics.cacheReadTokens,
-          pricing
-        );
-        costStr = ` $${cost.toFixed(2)}`;
-      }
+      const { cost } = computeSessionCost(ctx);
+      if (cost != null) costStr = ` $${cost.toFixed(2)}`;
     }
 
     return colorize(

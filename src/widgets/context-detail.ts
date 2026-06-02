@@ -2,8 +2,9 @@ import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
 
 function formatTokens(n: number): string {
-  const k = n / 1_000;
-  return k >= 1000 ? (k / 1000).toFixed(1) + "M" : (Number.isInteger(k) ? k.toFixed(0) : k.toFixed(1)) + "k";
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return Math.round(n / 1_000) + "k";
+  return String(n);
 }
 
 export const ContextLengthWidget: Widget = {
@@ -14,8 +15,9 @@ export const ContextLengthWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const used = ctx.data.context_window?.total_input_tokens;
-    if (used == null) return null;
+    // 优先用 StatusJSON，回退到 JSONL 解析的上下文长度
+    const used = ctx.data.context_window?.total_input_tokens ?? ctx.tokenMetrics?.contextLength ?? null;
+    if (used == null || used === 0) return null;
     const text = formatTokens(used);
     return colorize(text, item.color || this.defaultColor, item.bold);
   },

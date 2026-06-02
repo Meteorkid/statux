@@ -52,9 +52,7 @@ export const TokensCachedWidget: Widget = {
   defaultColor: "yellow",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const fromData = ctx.data.context_window?.total_input_tokens; // StatusJSON 没有单独 cached 字段
-    const fromJsonl = ctx.tokenMetrics?.cachedTokens;
-    const count = fromJsonl ?? null;
+    const count = ctx.tokenMetrics?.cachedTokens ?? null;
     if (count == null) return null;
     return colorize(`cache:${formatTokens(count)}`, item.color || this.defaultColor, item.bold);
   },
