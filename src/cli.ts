@@ -1,4 +1,7 @@
 #!/usr/bin/env bun
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
 import { StatusJSONSchema } from "./types/StatusJSON";
 import { loadConfig } from "./config";
 import { registerAllWidgets } from "./widgets";
@@ -15,6 +18,8 @@ import {
 import { parseCliCommand, HELP_TEXT } from "./cli/args";
 import { emitIterm2Osc, writeStatusJson } from "./cli/output";
 import { printHistory, recordRenderContextSession } from "./cli/session-history";
+
+const HOME = process.env.HOME || homedir();
 
 /** 读取 stdin */
 async function readStdin(): Promise<string | null> {
@@ -87,8 +92,27 @@ function inferToolFromLocalState(): Tool | null {
   return null;
 }
 
-/** 轮询模式 — 持续检测并渲染 */
+/** 轮询模式 — 持续检测并渲染（带互斥锁防止僵尸进程） */
 async function renderWatch(intervalSec: number) {
+  const lockPath = join(HOME, ".cache", "statux", "watch.lock");
+  try {
+    mkdirSync(join(HOME, ".cache", "statux"), { recursive: true });
+    if (existsSync(lockPath)) {
+      const lockPid = parseInt(readFileSync(lockPath, "utf-8").trim(), 10);
+      // 检查锁文件对应的进程是否还活着
+      try {
+        process.kill(lockPid, 0); // 信号 0 只检查进程是否存在
+        console.error(`statux: 另一个 --watch 实例正在运行 (PID ${lockPid})，退出`);
+        process.exit(1);
+      } catch {
+        // 进程不存在，清理过期锁
+      }
+    }
+    writeFileSync(lockPath, String(process.pid), "utf-8");
+  } catch {
+    // 锁机制失败不阻止运行
+  }
+
   let lastHadOutput = false;
 
   const tick = async () => {
@@ -113,9 +137,10 @@ async function renderWatch(intervalSec: number) {
     }
   }, intervalSec * 1000);
 
-  // 优雅退出 — renderOneshot 已在每次渲染后记录会话，这里只需关闭数据库
+  // 优雅退出 — 清理锁文件和数据库
   const cleanup = () => {
     clearInterval(timer);
+    try { if (existsSync(lockPath)) { const { unlinkSync } = require("fs"); unlinkSync(lockPath); } } catch {}
     closeHistoryDb();
     process.exit(0);
   };
