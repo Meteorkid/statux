@@ -3,12 +3,20 @@ import { colorize } from "../render/ansi";
 import { execSync } from "child_process";
 import { totalmem } from "os";
 
+const CACHE_TTL_MS = 3000; // 3 秒缓存，内存变化慢
+
 function formatBytes(bytes: number): string {
   const gb = bytes / (1024 * 1024 * 1024);
   return gb.toFixed(1) + "G";
 }
 
+let memCache: { data: { used: number; total: number } | null; expiresAt: number } | null = null;
+
 function getMemoryInfo(): { used: number; total: number } | null {
+  const now = Date.now();
+  if (memCache && memCache.expiresAt > now) return memCache.data;
+
+  let data: { used: number; total: number } | null = null;
   try {
     if (process.platform === "darwin") {
       const vmStat = execSync("vm_stat", { encoding: "utf-8", timeout: 2000 });
@@ -19,9 +27,6 @@ function getMemoryInfo(): { used: number; total: number } | null {
         return match ? parseInt(match[1]!) * pageSize : 0;
       };
 
-      // 对齐 macOS 活动监视器的计算方式
-      // App Memory  = Anonymous - Purgeable
-      // Memory Used = App Memory + Wired + Compressor
       const wired = parse("Pages wired down");
       const purgeable = parse("Pages purgeable");
       const compressor = parse("Pages occupied by compressor");
@@ -30,17 +35,18 @@ function getMemoryInfo(): { used: number; total: number } | null {
       const appMemory = anonymous - purgeable;
       const used = appMemory + wired + compressor;
       const total = totalmem();
-
-      return { used: Math.max(0, used), total };
+      data = { used: Math.max(0, used), total };
+    } else {
+      const total = totalmem();
+      const { freemem } = require("os");
+      data = { used: total - freemem(), total };
     }
-
-    // Linux/其他
-    const total = totalmem();
-    const { freemem } = require("os");
-    return { used: total - freemem(), total };
   } catch {
-    return null;
+    data = null;
   }
+
+  memCache = { data, expiresAt: now + CACHE_TTL_MS };
+  return data;
 }
 
 export const FreeMemoryWidget: Widget = {

@@ -1,10 +1,13 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, statSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 
 const HOME = process.env.HOME || homedir();
+
+// mtime 缓存：邮箱几乎不会变
+let emailCache: { mtime: number; email: string | null } | null = null;
 
 function getClaudeAccountEmail(): string | null {
   try {
@@ -12,8 +15,13 @@ function getClaudeAccountEmail(): string | null {
     const configPath = join(configDir, ".claude.json");
     if (!existsSync(configPath)) return null;
 
+    const mtime = statSync(configPath).mtimeMs;
+    if (emailCache && emailCache.mtime === mtime) return emailCache.email;
+
     const config = JSON.parse(readFileSync(configPath, "utf-8"));
-    return config?.oauthAccount?.emailAddress || null;
+    const email = config?.oauthAccount?.emailAddress || null;
+    emailCache = { mtime, email };
+    return email;
   } catch {
     return null;
   }
