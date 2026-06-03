@@ -15,17 +15,15 @@ function formatTokens(n: number): string {
 export function inferContextPct(ctx: RenderContext): number | null {
   const cw = ctx.data.context_window;
   if (cw) {
-    // 1. 从 total_input_tokens 计算真实百分比（可超过 100%）
-    //    但要过滤掉空数据（total_input_tokens = 0 且 used_percentage = 0）
+    // 1. 直接百分比（Claude Code 报告的，封顶 100%）
+    const direct = cw.used_percentage ?? (cw.remaining_percentage != null ? 100 - cw.remaining_percentage : null);
+    if (direct != null) return direct;
+
+    // 2. 从 total_input_tokens 计算（可能超过 100%，但不太准确）
     if (cw.total_input_tokens != null && cw.total_input_tokens > 0 &&
         cw.context_window_size != null && cw.context_window_size > 0) {
       return (cw.total_input_tokens / cw.context_window_size) * 100;
     }
-
-    // 2. 直接百分比（Claude Code 报告的，会被封顶在 100%）
-    //    但要过滤掉空数据（used_percentage = 0 且 total_input_tokens = 0）
-    const direct = cw.used_percentage ?? (cw.remaining_percentage != null ? 100 - cw.remaining_percentage : null);
-    if (direct != null && direct > 0) return direct;
   }
   // 3. 从 JSONL 回退
   if (ctx.tokenMetrics?.contextLength && ctx.data.context_window?.context_window_size) {
@@ -46,7 +44,7 @@ export const ContextBarWidget: Widget = {
     const rawPct = inferContextPct(ctx);
     if (rawPct == null) return null;
 
-    // bar 视觉上限 100%，但百分比显示实际值（可以 >100% 表示溢出）
+    // bar 视觉上限 100%
     const barPct = Math.max(0, Math.min(100, rawPct));
     const filled = Math.round((barPct / 100) * BAR_WIDTH);
     const empty = BAR_WIDTH - filled;
@@ -58,10 +56,7 @@ export const ContextBarWidget: Widget = {
     else if (rawPct > 20) color = "green";
     else color = "white";
 
-    // 超 100% 时显示实际 token 数，帮助判断是否需要手动压缩
-    const pctDisplay = rawPct > 100
-      ? `${Math.round(rawPct)}% (${formatTokens(ctx.tokenMetrics?.contextLength ?? ctx.data.context_window?.total_input_tokens ?? 0)})`
-      : `${Math.round(rawPct)}%`;
+    const pctDisplay = `${Math.round(rawPct)}%`;
 
     // 超过 85% 时添加压缩提醒
     const warning = rawPct > 85 ? " ⚠️/compact" : "";
