@@ -1,14 +1,41 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
 
+const HOME = process.env.HOME || homedir();
 const BAR_WIDTH = 10;
 const FILLED = "█";
 const EMPTY = "░";
+const CACHE_FILE = join(HOME, ".cache", "statux", "ctx-last-pct.json");
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
   if (n >= 1_000) return Math.round(n / 1_000) + "k";
   return String(n);
+}
+
+/** 读取上次缓存的 ctx 百分比 */
+function getCachedPct(): number | null {
+  try {
+    if (existsSync(CACHE_FILE)) {
+      const data = JSON.parse(readFileSync(CACHE_FILE, "utf-8"));
+      // 缓存 5 分钟有效
+      if (data.pct != null && Date.now() - data.timestamp < 300_000) {
+        return data.pct;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+/** 缓存 ctx 百分比 */
+function setCachedPct(pct: number): void {
+  try {
+    mkdirSync(join(HOME, ".cache", "statux"), { recursive: true });
+    writeFileSync(CACHE_FILE, JSON.stringify({ pct, timestamp: Date.now() }), "utf-8");
+  } catch {}
 }
 
 /** 从上下文数据推算使用百分比（供 context-bar / context-pct / context-pct-usable 共用） */
@@ -17,20 +44,31 @@ export function inferContextPct(ctx: RenderContext): number | null {
   if (cw) {
     // 1. 直接百分比（Claude Code 报告的，封顶 100%）
     const direct = cw.used_percentage ?? (cw.remaining_percentage != null ? 100 - cw.remaining_percentage : null);
-    if (direct != null) return direct;
+    if (direct != null && direct > 0) {
+      setCachedPct(direct);
+      return direct;
+    }
 
     // 2. 从 total_input_tokens 计算（可能超过 100%，但不太准确）
     if (cw.total_input_tokens != null && cw.total_input_tokens > 0 &&
         cw.context_window_size != null && cw.context_window_size > 0) {
-      return (cw.total_input_tokens / cw.context_window_size) * 100;
+      const computed = (cw.total_input_tokens / cw.context_window_size) * 100;
+      setCachedPct(computed);
+      return computed;
     }
   }
   // 3. 从 JSONL 回退
   if (ctx.tokenMetrics?.contextLength && ctx.data.context_window?.context_window_size) {
     const windowSize = ctx.data.context_window.context_window_size;
-    if (windowSize > 0) return (ctx.tokenMetrics.contextLength / windowSize) * 100;
+    if (windowSize > 0) {
+      const pct = (ctx.tokenMetrics.contextLength / windowSize) * 100;
+      setCachedPct(pct);
+      return pct;
+    }
   }
-  return null;
+
+  // 4. 使用缓存的值（避免忽高忽低）
+  return getCachedPct();
 }
 
 export const ContextBarWidget: Widget = {
