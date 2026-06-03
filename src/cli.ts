@@ -235,26 +235,6 @@ async function main() {
   // 注册所有 widget
   registerAllWidgets();
 
-  // === 快速路径：读取上次渲染缓存（消除刷新闪烁） ===
-  const renderCachePath = join(HOME, ".cache", "statux", "render-cache.txt");
-  const oscCachePath = join(HOME, ".cache", "statux", "osc-cache.txt");
-  try {
-    if (existsSync(renderCachePath)) {
-      const { mtimeMs } = statSync(renderCachePath);
-      if (Date.now() - mtimeMs < 10_000) {
-        // 缓存新鲜，直接输出（<1ms）
-        const cached = readFileSync(renderCachePath, "utf-8");
-        if (cached) process.stdout.write(cached);
-        // iTerm2 OSC 也用缓存
-        if (existsSync(oscCachePath)) {
-          const osc = readFileSync(oscCachePath, "utf-8");
-          if (osc) process.stdout.write(osc);
-        }
-        return;
-      }
-    }
-  } catch { /* 缓存读取失败，走正常路径 */ }
-
   // === Claude Code statusLine mode (stdin) ===
   const input = await readStdin();
   if (!input || input.trim() === "") {
@@ -276,6 +256,30 @@ async function main() {
     console.error("statux: invalid input JSON", err);
     process.exit(1);
   }
+
+  // 获取会话 ID 用于缓存 key
+  const sessionId = resolveSessionId(data);
+  const safeSessionId = sessionId.replace(/[^a-zA-Z0-9-]/g, "_").slice(0, 50);
+
+  // === 快速路径：读取上次渲染缓存（消除刷新闪烁，按会话隔离） ===
+  const renderCachePath = join(HOME, ".cache", "statux", `render-${safeSessionId}.txt`);
+  const oscCachePath = join(HOME, ".cache", "statux", `osc-${safeSessionId}.txt`);
+  try {
+    if (existsSync(renderCachePath)) {
+      const { mtimeMs } = statSync(renderCachePath);
+      if (Date.now() - mtimeMs < 10_000) {
+        // 缓存新鲜，直接输出（<1ms）
+        const cached = readFileSync(renderCachePath, "utf-8");
+        if (cached) process.stdout.write(cached);
+        // iTerm2 OSC 也用缓存
+        if (existsSync(oscCachePath)) {
+          const osc = readFileSync(oscCachePath, "utf-8");
+          if (osc) process.stdout.write(osc);
+        }
+        return;
+      }
+    }
+  } catch { /* 缓存读取失败，走正常路径 */ }
 
   // 加载配置
   const config = loadConfig(command.configPath);
@@ -309,7 +313,7 @@ async function main() {
   writeStatusJson(ctx.data, ctx.tokenMetrics);
 
   // 记录会话历史（使用稳定 session ID，避免重复插入）
-  recordRenderContextSession(ctx, resolveSessionId(data), "claude-code");
+  recordRenderContextSession(ctx, sessionId, "claude-code");
 
   closeHistoryDb();
 }
