@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.4.1 (2026-06-03)
+
+### Context Widget 修复
+
+- **context-length 不显示**: StatusJSON 为 0 时正确回退到 JSONL 数据
+- **context-bar 缓存隔离**: 每个会话独立缓存，不同窗口不再显示相同内容
+- **ctx 百分比稳定**: 缓存上次的百分比值，避免忽高忽低
+- **空数据过滤**: StatusJSON 为空时不显示 ctx，避免显示 0%
+
+### 渲染缓存优化
+
+- **按会话隔离**: render-cache.txt 改为 render-{sessionId}.txt，解决多窗口显示相同内容
+- **上下文压缩提醒**: 超过 85% 时显示 ⚠️/compact 警告
+
+### 自动压缩监控
+
+- **auto-compact.sh**: 后台监控上下文使用率，超阈值自动提醒
+- **LaunchAgent 支持**: 开机自动启动监控
+- **路径修复**: 正确读取 per-session 调试文件
+
+### 代码质量
+
+- **inferContextPct 纯函数化**: 移除副作用，缓存写入移到 context-bar render
+- **formatTokens 统一**: 消除 5 处重复定义，统一到 format-utils.ts
+- **颜色阈值统一**: 三个 context widget 使用一致的颜色阈值
+- **压缩阈值统一**: 统一为 85%
+- **hideWhenZero 修复**: compaction widget 逻辑修正
+- **TypeScript 类型修复**: buildCodexRenderContext 参数类型与 WidgetRequirements 一致
+
 ## v0.4.0 (2026-06-03)
 
 ### 重大修复
