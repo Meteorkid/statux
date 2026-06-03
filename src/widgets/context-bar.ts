@@ -15,14 +15,14 @@ function formatTokens(n: number): string {
 export function inferContextPct(ctx: RenderContext): number | null {
   const cw = ctx.data.context_window;
   if (cw) {
-    // 1. 直接百分比（Claude Code 报告的，已考虑缓存等因素）
-    const direct = cw.used_percentage ?? (cw.remaining_percentage != null ? 100 - cw.remaining_percentage : null);
-    if (direct != null) return direct;
-
-    // 2. 从 total_input_tokens 计算（可能包含缓存）
+    // 1. 从 total_input_tokens 计算真实百分比（可超过 100%）
     if (cw.total_input_tokens != null && cw.context_window_size != null && cw.context_window_size > 0) {
       return (cw.total_input_tokens / cw.context_window_size) * 100;
     }
+
+    // 2. 直接百分比（Claude Code 报告的，会被封顶在 100%）
+    const direct = cw.used_percentage ?? (cw.remaining_percentage != null ? 100 - cw.remaining_percentage : null);
+    if (direct != null) return direct;
   }
   // 3. 从 JSONL 回退
   if (ctx.tokenMetrics?.contextLength && ctx.data.context_window?.context_window_size) {
