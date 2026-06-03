@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { StatusJSONSchema } from "./types/StatusJSON";
@@ -235,6 +235,26 @@ async function main() {
   // 注册所有 widget
   registerAllWidgets();
 
+  // === 快速路径：读取上次渲染缓存（消除刷新闪烁） ===
+  const renderCachePath = join(HOME, ".cache", "statux", "render-cache.txt");
+  const oscCachePath = join(HOME, ".cache", "statux", "osc-cache.txt");
+  try {
+    if (existsSync(renderCachePath)) {
+      const { mtimeMs } = statSync(renderCachePath);
+      if (Date.now() - mtimeMs < 10_000) {
+        // 缓存新鲜，直接输出（<1ms）
+        const cached = readFileSync(renderCachePath, "utf-8");
+        if (cached) process.stdout.write(cached);
+        // iTerm2 OSC 也用缓存
+        if (existsSync(oscCachePath)) {
+          const osc = readFileSync(oscCachePath, "utf-8");
+          if (osc) process.stdout.write(osc);
+        }
+        return;
+      }
+    }
+  } catch { /* 缓存读取失败，走正常路径 */ }
+
   // === Claude Code statusLine mode (stdin) ===
   const input = await readStdin();
   if (!input || input.trim() === "") {
@@ -265,13 +285,25 @@ async function main() {
   // 渲染
   const lines = renderStatusLines(config.lines, config, ctx);
 
-  // 输出到 stdout
-  for (const line of lines) {
-    console.log(line);
-  }
+  // 输出到 stdout + 写入缓存（下次刷新即时输出）
+  const output = lines.join("\n") + "\n";
+  process.stdout.write(output);
+  try {
+    mkdirSync(join(HOME, ".cache", "statux"), { recursive: true });
+    writeFileSync(renderCachePath, output, "utf-8");
+  } catch { /* 缓存写入失败不影响主流程 */ }
 
-  // iTerm2 OSC 序列输出
+  // iTerm2 OSC 序列输出 + 缓存
   emitIterm2Osc(ctx.data, ctx.tokenMetrics);
+  try {
+    // 捕获 iTerm2 OSC 输出到缓存
+    if (process.env.TERM_PROGRAM?.includes("iTerm")) {
+      const { buildIterm2StatusPayload } = await import("./data/iterm2-status");
+      const oscPayload = JSON.stringify(buildIterm2StatusPayload(ctx.data, ctx.tokenMetrics));
+      const oscOutput = `\x1b]1337;Custom=id=statux:${oscPayload}\x07`;
+      writeFileSync(oscCachePath, oscOutput, "utf-8");
+    }
+  } catch { /* ignore */ }
 
   // 直接写入 status.json（备用方案，确保 iTerm2 插件能读取）
   writeStatusJson(ctx.data, ctx.tokenMetrics);
