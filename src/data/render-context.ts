@@ -100,7 +100,7 @@ export function buildCodexRenderContextFromLocalState(
 ): RenderContext | null {
   const requirements = getRequirements(options);
   const thread = requireFreshLocalState ? readLatestFreshCodexThread() : readLatestCodexThread();
-  if (thread) return buildCodexRenderContext(thread);
+  if (thread) return buildCodexRenderContext(thread, requirements);
 
   const bridge = requireFreshLocalState ? readFreshCodexBridgeData() : readCodexBridgeData();
   if (!bridge) return null;

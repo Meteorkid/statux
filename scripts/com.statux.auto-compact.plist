@@ -7,9 +7,8 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/meteor/github/statux/scripts/auto-compact.sh</string>
-        <string>85</string>
-        <string>30</string>
+        <string>-c</string>
+        <string>SCRIPT_DIR="$(dirname "$(readlink -f "$0" || echo "$0")")" &amp;&amp; exec "$SCRIPT_DIR/auto-compact.sh" 85 30</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

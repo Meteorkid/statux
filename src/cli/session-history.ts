@@ -1,10 +1,14 @@
 import { recordSession, getRecentSessions, getDailySummaries, getSummaryByModel } from "../data/history";
 import type { RenderContext } from "../types/Widget";
 import type { Tool } from "../types/Tool";
+import { formatTokens } from "../widgets/format-utils";
 
 function getModelId(ctx: RenderContext): string | undefined {
   return typeof ctx.data.model === "string" ? ctx.data.model : ctx.data.model?.id;
 }
+
+// 使用共享的 formatTokens 代替本地 formatTokenCount
+const formatTokenCount = formatTokens;
 
 export function recordRenderContextSession(
   ctx: RenderContext,
@@ -23,12 +27,6 @@ export function recordRenderContextSession(
   } catch {
     // 记录失败不影响主流程
   }
-}
-
-function formatTokenCount(totalTokens: number): string {
-  if (totalTokens >= 1_000_000) return `${(totalTokens / 1_000_000).toFixed(1)}M`;
-  if (totalTokens >= 1_000) return `${(totalTokens / 1_000).toFixed(1)}K`;
-  return String(totalTokens);
 }
 
 function formatCost(costUsd: number): string {

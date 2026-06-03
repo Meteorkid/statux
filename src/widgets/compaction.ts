@@ -52,7 +52,7 @@ export const CompactionWidget: Widget = {
     if (!transcriptPath) return null;
 
     const count = detectCompactionCount(transcriptPath);
-    if (count === 0 && item.metadata?.hideWhenZero !== false) return null;
+    if (count === 0 && item.metadata?.hideWhenZero === true) return null;
 
     return colorize(`compact:${count}`, item.color || this.defaultColor, item.bold);
   },

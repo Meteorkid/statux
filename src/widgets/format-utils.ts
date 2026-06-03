@@ -1,5 +1,12 @@
 /** 共享格式化工具（供 usage / weekly-reset-timer / weekly-usage 等 widget 共用） */
 
+/** 格式化 token 数量为可读字符串（如 1.2k, 3.4M） */
+export function formatTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  return String(n);
+}
+
 /** 格式化毫秒时长为可读字符串 */
 export function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);

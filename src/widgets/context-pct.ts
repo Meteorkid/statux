@@ -1,6 +1,6 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { inferContextPct } from "./context-bar";
+import { inferContextPct, getCachedContextPct } from "./context-bar";
 
 export const ContextPctWidget: Widget = {
   type: "context-pct",
@@ -10,13 +10,13 @@ export const ContextPctWidget: Widget = {
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const rawPct = inferContextPct(ctx);
+    const rawPct = inferContextPct(ctx) ?? getCachedContextPct(ctx);
     if (rawPct == null) return null;
-    const pct = Math.max(0, Math.min(999, rawPct)); // 允许超 100% 显示，但不溢出
+    const pct = Math.max(0, Math.min(999, rawPct));
 
     let color = item.color || this.defaultColor;
     if (pct > 80) color = "red";
-    else if (pct > 60) color = "yellow";
+    else if (pct > 60) color = "magenta";
 
     const label = item.rawValue ? "" : "ctx:";
     return colorize(`${label}${Math.round(pct)}%`, color, item.bold);

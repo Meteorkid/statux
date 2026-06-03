@@ -4,33 +4,38 @@
 
 THRESHOLD=${1:-85}  # 默认 85%
 CHECK_INTERVAL=${2:-30}  # 默认 30 秒检查一次
-DEBUG_FILE="$HOME/.cache/statux/ctx-debug.json"
+DEBUG_DIR="$HOME/.cache/statux"
+LOCK_FILE="$DEBUG_DIR/auto-compact.lock"
+
+# 防止重复运行
+if [ -f "$LOCK_FILE" ]; then
+  lock_pid=$(cat "$LOCK_FILE" 2>/dev/null)
+  if kill -0 "$lock_pid" 2>/dev/null; then
+    echo "❌ 另一个实例正在运行 (PID $lock_pid)"
+    exit 1
+  fi
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
 
 echo "🔍 启动上下文监控 (阈值: ${THRESHOLD}%, 间隔: ${CHECK_INTERVAL}s)"
 
 while true; do
-  if [ -f "$DEBUG_FILE" ]; then
-    # 读取调试数据
+  # 找到最新的调试文件（按修改时间）
+  latest_debug=$(ls -t "$DEBUG_DIR"/ctx-debug-*.json 2>/dev/null | head -1)
+
+  if [ -n "$latest_debug" ] && [ -f "$latest_debug" ]; then
     used_pct=$(python3 -c "
 import json
 try:
-    with open('$DEBUG_FILE') as f:
+    with open('$latest_debug') as f:
         d = json.load(f)
-        # 优先用计算值，其次用 reported 值
-        total = d.get('total_input_tokens', 0) or 0
-        window = d.get('context_window_size', 200000) or 200000
         reported = d.get('used_percentage', 0) or 0
-
-        if total > 0 and window > 0:
-            computed = (total / window) * 100
-            print(int(max(computed, reported)))
-        else:
-            print(int(reported))
+        print(int(reported))
 except:
     print(0)
 " 2>/dev/null)
 
-    # 检查是否超过阈值
     if [ "$used_pct" -ge "$THRESHOLD" ] 2>/dev/null; then
       echo "⚠️  上下文使用率 ${used_pct}% 超过阈值 ${THRESHOLD}%"
 
@@ -41,11 +46,16 @@ except:
       auto_compacted=false
 
       # 方法1: 通过 tmux 发送命令
-      if command -v tmux &> /dev/null && tmux list-sessions 2>/dev/null | grep -q "claude"; then
-        tmux send-keys -t claude "/compact" Enter 2>/dev/null && {
-          echo "✅ 已自动发送 /compact 命令到 tmux"
-          auto_compacted=true
-        }
+      if command -v tmux &> /dev/null; then
+        for session in $(tmux list-sessions -F "#{session_name}" 2>/dev/null); do
+          if tmux list-panes -t "$session" -F "#{pane_current_command}" 2>/dev/null | grep -q "claude"; then
+            tmux send-keys -t "$session" "/compact" Enter 2>/dev/null && {
+              echo "✅ 已自动发送 /compact 到 tmux session: $session"
+              auto_compacted=true
+              break
+            }
+          fi
+        done
       fi
 
       # 方法2: 通过 iTerm2 发送命令
@@ -57,22 +67,7 @@ except:
             end tell
           end tell
         ' 2>/dev/null && {
-          echo "✅ 已自动发送 /compact 命令到 iTerm2"
-          auto_compacted=true
-        }
-      fi
-
-      # 方法3: 通过 AppleScript 发送到当前终端
-      if [ "$auto_compacted" = false ]; then
-        osascript -e '
-          tell application "System Events"
-            tell process "Terminal"
-              keystroke "/compact"
-              keystroke return
-            end tell
-          end tell
-        ' 2>/dev/null && {
-          echo "✅ 已自动发送 /compact 命令到终端"
+          echo "✅ 已自动发送 /compact 到 iTerm2"
           auto_compacted=true
         }
       fi

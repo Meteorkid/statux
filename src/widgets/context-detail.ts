@@ -1,12 +1,7 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
-import { inferContextPct } from "./context-bar";
-
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return Math.round(n / 1_000) + "k";
-  return String(n);
-}
+import { inferContextPct, getCachedContextPct } from "./context-bar";
+import { formatTokens } from "./format-utils";
 
 export const ContextLengthWidget: Widget = {
   type: "context-length",
@@ -16,7 +11,6 @@ export const ContextLengthWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    // 优先用 StatusJSON，回退到 JSONL 解析的上下文长度
     const used = ctx.data.context_window?.total_input_tokens ?? ctx.tokenMetrics?.contextLength ?? null;
     if (used == null || used === 0) return null;
     const text = formatTokens(used);
@@ -43,15 +37,14 @@ export const ContextPctUsableWidget: Widget = {
   type: "context-pct-usable",
   category: "context",
   displayName: "Context % (Usable)",
-  description: "可用上下文百分比（基于 80% 上限）",
+  description: "可用上下文百分比（基于 85% 上限）",
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const pct = inferContextPct(ctx);
+    const pct = inferContextPct(ctx) ?? getCachedContextPct(ctx);
     if (pct == null) return null;
-    // 可用百分比 = 实际百分比 / 80% (auto-compact 阈值)
-    const usablePct = Math.min(100, Math.round((pct / 80) * 100));
-    const color = usablePct > 90 ? "red" : usablePct > 70 ? "yellow" : item.color || this.defaultColor;
+    const usablePct = Math.min(100, Math.round((pct / 85) * 100));
+    const color = usablePct > 90 ? "red" : usablePct > 70 ? "magenta" : item.color || this.defaultColor;
     return colorize(`${usablePct}%`, color, item.bold);
   },
 };

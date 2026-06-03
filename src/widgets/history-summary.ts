@@ -8,6 +8,7 @@
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
 import { colorize } from "../render/ansi";
 import { getTodaySummary, getWeekSummary } from "../data/history";
+import { formatTokens } from "./format-utils";
 import type { SessionSummary } from "../data/history";
 
 // TTL 缓存：避免每次 render 都查 SQLite
@@ -45,7 +46,7 @@ export const HistoryTodayWidget: Widget = {
     const cost = summary.totalCostUsd < 0.01
       ? "<$0.01"
       : `$${summary.totalCostUsd.toFixed(2)}`;
-    const tokens = formatTokenCount(summary.totalTokens);
+    const tokens = formatTokens(summary.totalTokens);
 
     const display = `today: ${cost} (${tokens}, ${summary.sessionCount} sess)`;
     return colorize(display, item.color || this.defaultColor, item.bold);
@@ -66,7 +67,7 @@ export const HistoryWeekWidget: Widget = {
     const cost = summary.totalCostUsd < 0.01
       ? "<$0.01"
       : `$${summary.totalCostUsd.toFixed(2)}`;
-    const tokens = formatTokenCount(summary.totalTokens);
+    const tokens = formatTokens(summary.totalTokens);
 
     const display = `week: ${cost} (${tokens}, ${summary.sessionCount} sess)`;
     return colorize(display, item.color || this.defaultColor, item.bold);
@@ -92,9 +93,4 @@ export const HistoryCostWidget: Widget = {
   },
 };
 
-/** 格式化 token 数量（如 1234567 → "1.2M"） */
-function formatTokenCount(tokens: number): string {
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
-  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`;
-  return String(tokens);
-}
+// 使用共享的 formatTokens 代替本地 formatTokenCount
