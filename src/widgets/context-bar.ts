@@ -15,24 +15,16 @@ function formatTokens(n: number): string {
 export function inferContextPct(ctx: RenderContext): number | null {
   const cw = ctx.data.context_window;
   if (cw) {
-    // 1. 优先从 token 数计算（最准确，能反映超过 100% 的情况）
-    if (cw.total_input_tokens != null && cw.context_window_size != null && cw.context_window_size > 0) {
-      const computed = (cw.total_input_tokens / cw.context_window_size) * 100;
-      // 如果计算结果 > 100%，说明确实超了，用计算值
-      // 如果 <= 100%，再看有没有更精确的直接值
-      if (computed > 100) return computed;
-    }
-
-    // 2. 直接百分比（Claude Code 报告的，但会被封顶在 100%）
+    // 1. 直接百分比（Claude Code 报告的，已考虑缓存等因素）
     const direct = cw.used_percentage ?? (cw.remaining_percentage != null ? 100 - cw.remaining_percentage : null);
     if (direct != null) return direct;
 
-    // 3. 从 token 数计算（兜底）
+    // 2. 从 total_input_tokens 计算（可能包含缓存）
     if (cw.total_input_tokens != null && cw.context_window_size != null && cw.context_window_size > 0) {
       return (cw.total_input_tokens / cw.context_window_size) * 100;
     }
   }
-  // 4. 从 JSONL 回退
+  // 3. 从 JSONL 回退
   if (ctx.tokenMetrics?.contextLength && ctx.data.context_window?.context_window_size) {
     const windowSize = ctx.data.context_window.context_window_size;
     if (windowSize > 0) return (ctx.tokenMetrics.contextLength / windowSize) * 100;
