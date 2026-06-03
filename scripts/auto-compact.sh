@@ -1,0 +1,46 @@
+#!/bin/bash
+# 自动压缩监控脚本
+# 当上下文使用率超过阈值时，发送通知提醒用户压缩
+
+THRESHOLD=${1:-85}  # 默认 85%
+CHECK_INTERVAL=${2:-30}  # 默认 30 秒检查一次
+DEBUG_FILE="$HOME/.cache/statux/ctx-debug.json"
+
+echo "🔍 启动上下文监控 (阈值: ${THRESHOLD}%, 间隔: ${CHECK_INTERVAL}s)"
+
+while true; do
+  if [ -f "$DEBUG_FILE" ]; then
+    # 读取调试数据
+    used_pct=$(python3 -c "
+import json
+try:
+    with open('$DEBUG_FILE') as f:
+        d = json.load(f)
+        # 优先用计算值，其次用 reported 值
+        total = d.get('total_input_tokens', 0) or 0
+        window = d.get('context_window_size', 200000) or 200000
+        reported = d.get('used_percentage', 0) or 0
+
+        if total > 0 and window > 0:
+            computed = (total / window) * 100
+            print(int(max(computed, reported)))
+        else:
+            print(int(reported))
+except:
+    print(0)
+" 2>/dev/null)
+
+    # 检查是否超过阈值
+    if [ "$used_pct" -ge "$THRESHOLD" ] 2>/dev/null; then
+      echo "⚠️  上下文使用率 ${used_pct}% 超过阈值 ${THRESHOLD}%"
+
+      # 发送 macOS 通知
+      osascript -e "display notification \"上下文使用率 ${used_pct}%，建议执行 /compact 压缩\" with title \"Statux\" sound name \"Glass\"" 2>/dev/null
+
+      # 等待一段时间再检查（避免重复通知）
+      sleep 120
+    fi
+  fi
+
+  sleep "$CHECK_INTERVAL"
+done
