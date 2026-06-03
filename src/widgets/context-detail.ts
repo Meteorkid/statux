@@ -11,8 +11,11 @@ export const ContextLengthWidget: Widget = {
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    const used = ctx.data.context_window?.total_input_tokens ?? ctx.tokenMetrics?.contextLength ?? null;
-    if (used == null || used === 0) return null;
+    // 优先用 StatusJSON，回退到 JSONL（0 视为无效）
+    const fromStatus = ctx.data.context_window?.total_input_tokens;
+    const fromJsonl = ctx.tokenMetrics?.contextLength;
+    const used = (fromStatus && fromStatus > 0) ? fromStatus : (fromJsonl && fromJsonl > 0) ? fromJsonl : null;
+    if (used == null) return null;
     const text = formatTokens(used);
     return colorize(text, item.color || this.defaultColor, item.bold);
   },
