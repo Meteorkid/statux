@@ -62,6 +62,10 @@ export const ContextBarWidget: Widget = {
     const pctDisplay = rawPct > 100
       ? `${Math.round(rawPct)}% (${formatTokens(ctx.tokenMetrics?.contextLength ?? ctx.data.context_window?.total_input_tokens ?? 0)})`
       : `${Math.round(rawPct)}%`;
-    return colorize(`ctx:[${bar}] ${pctDisplay}`, color, item.bold);
+
+    // 超过 85% 时添加压缩提醒
+    const warning = rawPct > 85 ? " ⚠️/compact" : "";
+
+    return colorize(`ctx:[${bar}] ${pctDisplay}${warning}`, color, item.bold);
   },
 };
