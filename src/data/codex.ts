@@ -305,7 +305,7 @@ export function buildCodexGitInfo(thread: CodexThread): GitInfo | null {
  *
  * 优先使用 bridge 数据（含 transcript_path → 可解析 JSONL 获取精确 token 数据），
  * fallback 到 SQLite 直接读取。 */
-export function buildCodexRenderContext(thread: CodexThread, requirements?: { includeGit?: boolean; includeFork?: boolean; includePullRequest?: boolean }): RenderContext {
+export function buildCodexRenderContext(thread: CodexThread, requirements?: { needsGit?: boolean; needsGitFork?: boolean; needsGitPullRequest?: boolean }): RenderContext {
   // 尝试读取 bridge 数据获取 transcript_path
   const bridge = readCodexBridgeData();
 
@@ -326,7 +326,7 @@ export function buildCodexRenderContext(thread: CodexThread, requirements?: { in
       sessionDuration,
       terminalWidth: process.stdout.columns || 80,
       usageData: null,
-      gitInfo: requirements?.includeGit !== false ? (collectGitInfo(bridge.cwd) || buildCodexGitInfo(thread)) : null,
+      gitInfo: requirements?.needsGit !== false ? (collectGitInfo(bridge.cwd) || buildCodexGitInfo(thread)) : null,
       jujutsuInfo: null,
       tool: "codex",
     };
