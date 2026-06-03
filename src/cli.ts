@@ -273,12 +273,15 @@ async function main() {
   try {
     data = StatusJSONSchema.parse(JSON.parse(input));
 
-    // DEBUG: 记录 context_window 数据
+    // DEBUG: 记录 context_window 数据（按会话分文件）
     if (data.context_window) {
       try {
-        const debugPath = join(HOME, ".cache", "statux", "ctx-debug.json");
+        const sessionId = data.session_id || "unknown";
+        const debugPath = join(HOME, ".cache", "statux", `ctx-debug-${sessionId}.json`);
         mkdirSync(join(HOME, ".cache", "statux"), { recursive: true });
         writeFileSync(debugPath, JSON.stringify({
+          session_id: data.session_id,
+          transcript_path: data.transcript_path,
           used_percentage: data.context_window.used_percentage,
           remaining_percentage: data.context_window.remaining_percentage,
           total_input_tokens: data.context_window.total_input_tokens,

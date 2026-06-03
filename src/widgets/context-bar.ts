@@ -8,7 +8,6 @@ const HOME = process.env.HOME || homedir();
 const BAR_WIDTH = 10;
 const FILLED = "█";
 const EMPTY = "░";
-const CACHE_FILE = join(HOME, ".cache", "statux", "ctx-last-pct.json");
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
@@ -16,11 +15,20 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
+/** 获取会话特定的缓存文件路径 */
+function getCacheFile(ctx: RenderContext): string {
+  // 使用 session_id 或 transcript_path 作为缓存 key
+  const sessionId = ctx.data.session_id || ctx.data.transcript_path || "default";
+  const safeName = sessionId.replace(/[^a-zA-Z0-9-]/g, "_").slice(0, 50);
+  return join(HOME, ".cache", "statux", `ctx-${safeName}.json`);
+}
+
 /** 读取上次缓存的 ctx 百分比 */
-function getCachedPct(): number | null {
+function getCachedPct(ctx: RenderContext): number | null {
   try {
-    if (existsSync(CACHE_FILE)) {
-      const data = JSON.parse(readFileSync(CACHE_FILE, "utf-8"));
+    const cacheFile = getCacheFile(ctx);
+    if (existsSync(cacheFile)) {
+      const data = JSON.parse(readFileSync(cacheFile, "utf-8"));
       // 缓存 5 分钟有效
       if (data.pct != null && Date.now() - data.timestamp < 300_000) {
         return data.pct;
@@ -31,10 +39,11 @@ function getCachedPct(): number | null {
 }
 
 /** 缓存 ctx 百分比 */
-function setCachedPct(pct: number): void {
+function setCachedPct(ctx: RenderContext, pct: number): void {
   try {
+    const cacheFile = getCacheFile(ctx);
     mkdirSync(join(HOME, ".cache", "statux"), { recursive: true });
-    writeFileSync(CACHE_FILE, JSON.stringify({ pct, timestamp: Date.now() }), "utf-8");
+    writeFileSync(cacheFile, JSON.stringify({ pct, timestamp: Date.now() }), "utf-8");
   } catch {}
 }
 
@@ -45,7 +54,7 @@ export function inferContextPct(ctx: RenderContext): number | null {
     // 1. 直接百分比（Claude Code 报告的，封顶 100%）
     const direct = cw.used_percentage ?? (cw.remaining_percentage != null ? 100 - cw.remaining_percentage : null);
     if (direct != null && direct > 0) {
-      setCachedPct(direct);
+      setCachedPct(ctx, direct);
       return direct;
     }
 
@@ -53,7 +62,7 @@ export function inferContextPct(ctx: RenderContext): number | null {
     if (cw.total_input_tokens != null && cw.total_input_tokens > 0 &&
         cw.context_window_size != null && cw.context_window_size > 0) {
       const computed = (cw.total_input_tokens / cw.context_window_size) * 100;
-      setCachedPct(computed);
+      setCachedPct(ctx, computed);
       return computed;
     }
   }
@@ -62,13 +71,13 @@ export function inferContextPct(ctx: RenderContext): number | null {
     const windowSize = ctx.data.context_window.context_window_size;
     if (windowSize > 0) {
       const pct = (ctx.tokenMetrics.contextLength / windowSize) * 100;
-      setCachedPct(pct);
+      setCachedPct(ctx, pct);
       return pct;
     }
   }
 
   // 4. 使用缓存的值（避免忽高忽低）
-  return getCachedPct();
+  return getCachedPct(ctx);
 }
 
 export const ContextBarWidget: Widget = {
