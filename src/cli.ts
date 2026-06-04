@@ -252,6 +252,21 @@ async function main() {
   let data;
   try {
     data = StatusJSONSchema.parse(JSON.parse(input));
+
+    // 写入 context_window 调试数据（供 auto-compact 脚本读取）
+    if (data.context_window && data.session_id) {
+      try {
+        const debugPath = join(HOME, ".cache", "statux", `ctx-debug-${data.session_id}.json`);
+        mkdirSync(join(HOME, ".cache", "statux"), { recursive: true });
+        writeFileSync(debugPath, JSON.stringify({
+          session_id: data.session_id,
+          used_percentage: data.context_window.used_percentage,
+          total_input_tokens: data.context_window.total_input_tokens,
+          context_window_size: data.context_window.context_window_size,
+          timestamp: Date.now(),
+        }, null, 2), "utf-8");
+      } catch {}
+    }
   } catch (err) {
     console.error("statux: invalid input JSON", err);
     process.exit(1);
