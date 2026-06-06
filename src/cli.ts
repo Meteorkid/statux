@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, unlinkSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { StatusJSONSchema } from "./types/StatusJSON";
@@ -140,7 +140,7 @@ async function renderWatch(intervalSec: number) {
   // 优雅退出 — 清理锁文件和数据库
   const cleanup = () => {
     clearInterval(timer);
-    try { if (existsSync(lockPath)) { const { unlinkSync } = require("fs"); unlinkSync(lockPath); } } catch {}
+    try { if (existsSync(lockPath)) unlinkSync(lockPath); } catch {}
     closeHistoryDb();
     process.exit(0);
   };
@@ -276,9 +276,14 @@ async function main() {
   const sessionId = resolveSessionId(data);
   const safeSessionId = sessionId.replace(/[^a-zA-Z0-9-]/g, "_").slice(0, 50);
 
+  // 数据指纹：context_window 变化时缓存失效，避免输出旧数据
+  const dataFingerprint = data.context_window?.used_percentage != null
+    ? `-${Math.round(data.context_window.used_percentage)}`
+    : "";
+
   // === 快速路径：读取上次渲染缓存（消除刷新闪烁，按会话隔离） ===
-  const renderCachePath = join(HOME, ".cache", "statux", `render-${safeSessionId}.txt`);
-  const oscCachePath = join(HOME, ".cache", "statux", `osc-${safeSessionId}.txt`);
+  const renderCachePath = join(HOME, ".cache", "statux", `render-${safeSessionId}${dataFingerprint}.txt`);
+  const oscCachePath = join(HOME, ".cache", "statux", `osc-${safeSessionId}${dataFingerprint}.txt`);
   try {
     if (existsSync(renderCachePath)) {
       const { mtimeMs } = statSync(renderCachePath);

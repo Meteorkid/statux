@@ -26,6 +26,7 @@ function getDb(): Database {
 
   mkdirSync(DB_DIR, { recursive: true });
   db = new Database(DB_PATH);
+  db.exec("PRAGMA journal_mode=WAL");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (

@@ -31,6 +31,20 @@ export interface NormalizedEntry {
 // ─── JSONL 文件解析（带 mtime 缓存） ─────────────────────────
 
 const parseCache = new Map<string, { mtime: number; entries: unknown[] }>();
+const PARSE_CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 分钟过期
+let lastCacheCleanup = Date.now();
+
+/** 清理过期的解析缓存条目（防止 --watch 长时间运行内存膨胀） */
+function cleanupParseCache(): void {
+  const now = Date.now();
+  if (now - lastCacheCleanup < PARSE_CACHE_MAX_AGE_MS) return;
+  lastCacheCleanup = now;
+  for (const [key, cached] of parseCache) {
+    if (now - cached.mtime > PARSE_CACHE_MAX_AGE_MS) {
+      parseCache.delete(key);
+    }
+  }
+}
 
 /**
  * 解析 JSONL 文件，返回所有条目。
@@ -38,6 +52,8 @@ const parseCache = new Map<string, { mtime: number; entries: unknown[] }>();
  */
 export function parseJsonlFile<T = unknown>(filePath: string): T[] {
   if (!existsSync(filePath)) return [];
+
+  cleanupParseCache();
 
   const mtime = statSync(filePath).mtimeMs;
   const cached = parseCache.get(filePath);

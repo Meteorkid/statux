@@ -58,8 +58,8 @@ except:
         done
       fi
 
-      # 方法2: 通过 iTerm2 发送命令
-      if [ "$auto_compacted" = false ] && [ "$TERM_PROGRAM" = "iTerm.app" ]; then
+      # 方法2: 通过 iTerm2 发送命令（不检查 TERM_PROGRAM，LaunchAgent 没有这个变量）
+      if [ "$auto_compacted" = false ]; then
         osascript -e '
           tell application "iTerm"
             tell current session of current window

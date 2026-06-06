@@ -240,6 +240,9 @@ export function buildCodexSpeedMetricsFromTranscript(
 export function buildCodexTokenMetrics(thread: CodexThread): TokenMetrics | null {
   if (!thread.tokens_used || thread.tokens_used <= 0) return null;
 
+  // SQLite fallback 模式：Codex 仅记录总 tokens_used，无 input/output 分拆。
+  // 70/30 是经验值（Claude/OpenAI 典型 usage 分布），精度有限。
+  // 有 bridge + transcript 时会走更精确的路径。
   return {
     inputTokens: Math.round(thread.tokens_used * 0.7),
     outputTokens: Math.round(thread.tokens_used * 0.3),

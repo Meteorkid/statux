@@ -32,34 +32,40 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 }
 
 export function parseCliCommand(argv: string[]): CliCommand {
-  if (argv.includes("--setup")) return { type: "setup" };
-  if (argv.includes("--tui") || argv.includes("-t")) return { type: "tui" };
-  if (argv.includes("doctor") || argv.includes("--doctor")) return { type: "doctor" };
-  if (argv.includes("widgets") || argv.includes("--widgets")) return { type: "widgets" };
+  // 跳过 node/bun 和脚本路径
+  const args = argv.slice(2);
 
-  const historyIdx = argv.indexOf("--history");
-  if (historyIdx !== -1) {
-    const nextArg = argv[historyIdx + 1];
-    const days = nextArg && /^\d+$/.test(nextArg) ? parsePositiveInt(nextArg, 7) : 7;
-    return { type: "history", days };
+  let configPath: string | undefined;
+
+  // 位置参数解析：按顺序扫描，遇到 command 就返回
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+
+    // 独立命令（无 flag 前缀，第一个出现的）
+    if (arg === "doctor" || arg === "--doctor") return { type: "doctor" };
+    if (arg === "widgets" || arg === "--widgets") return { type: "widgets" };
+    if (arg === "--setup") return { type: "setup" };
+    if (arg === "--tui" || arg === "-t") return { type: "tui" };
+    if (arg === "--oneshot" || arg === "-1") return { type: "oneshot" };
+    if (arg === "--help" || arg === "-h") return { type: "help" };
+
+    // 带参数的 flag
+    if (arg === "--history") {
+      const nextArg = args[i + 1];
+      const days = nextArg && /^\d+$/.test(nextArg) ? parsePositiveInt(nextArg, 7) : 7;
+      return { type: "history", days };
+    }
+    if (arg === "--watch" || arg === "-w") {
+      const nextArg = args[i + 1];
+      const interval = nextArg && /^\d+$/.test(nextArg) ? parsePositiveInt(nextArg, 5) : 5;
+      return { type: "watch", intervalSec: interval };
+    }
+    if (arg === "--config") {
+      configPath = args[i + 1];
+      i++; // 跳过 config path 值
+      continue;
+    }
   }
 
-  const watchIdx = argv.indexOf("--watch");
-  const watchShort = argv.indexOf("-w");
-  const watchFlagIdx = watchIdx !== -1 ? watchIdx : watchShort;
-  if (watchFlagIdx !== -1) {
-    const nextArg = argv[watchFlagIdx + 1];
-    // 只当下一个参数是数字时才解析为 interval，否则用默认值
-    const interval = nextArg && /^\d+$/.test(nextArg) ? parsePositiveInt(nextArg, 5) : 5;
-    return { type: "watch", intervalSec: interval };
-  }
-
-  if (argv.includes("--oneshot") || argv.includes("-1")) return { type: "oneshot" };
-  if (argv.includes("--help") || argv.includes("-h")) return { type: "help" };
-
-  const configIdx = argv.indexOf("--config");
-  return {
-    type: "stdin",
-    configPath: configIdx !== -1 ? argv[configIdx + 1] : undefined,
-  };
+  return { type: "stdin", configPath };
 }

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, statSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { execSync } from "child_process";
@@ -64,6 +64,10 @@ function checkClaudeStatusLine(): DoctorCheck {
 function checkBun(): DoctorCheck {
   try {
     const version = execSync("bun --version", { encoding: "utf-8", timeout: 3000 }).trim();
+    const [major] = version.split(".").map(Number);
+    if (major != null && major < 1) {
+      return { status: "warn", name: "Bun runtime", detail: `v${version} (需要 >= 1.0)` };
+    }
     return { status: "ok", name: "Bun runtime", detail: `v${version}` };
   } catch {
     // 尝试常见路径
@@ -121,6 +125,23 @@ function checkUsageCredentials(): DoctorCheck {
     : { status: "warn", name: "Usage credentials", detail: "未找到 Claude credentials 文件，Usage API 可能只能使用 statusLine rate_limits" };
 }
 
+function checkPricingCache(): DoctorCheck {
+  const cachePath = join(HOME, ".config", "statux", "pricing-cache.json");
+  if (!existsSync(cachePath)) {
+    return { status: "warn", name: "LiteLLM pricing", detail: "缓存未创建（首次运行时自动下载）" };
+  }
+  try {
+    const { mtimeMs } = statSync(cachePath);
+    const ageHours = Math.round((Date.now() - mtimeMs) / (1000 * 60 * 60));
+    if (ageHours > 48) {
+      return { status: "warn", name: "LiteLLM pricing", detail: `缓存已 ${ageHours}h 未更新（建议 < 24h）` };
+    }
+    return { status: "ok", name: "LiteLLM pricing", detail: `缓存 ${ageHours}h 前更新` };
+  } catch {
+    return { status: "warn", name: "LiteLLM pricing", detail: "无法读取缓存状态" };
+  }
+}
+
 function formatStatus(status: CheckStatus): string {
   if (status === "ok") return "[ok]";
   if (status === "warn") return "[warn]";
@@ -135,6 +156,7 @@ export function runDoctor(): number {
     checkCodexState(),
     checkIterm2Plugin(),
     checkUsageCredentials(),
+    checkPricingCache(),
   ];
 
   console.log("statux doctor\n");
