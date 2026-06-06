@@ -13,9 +13,14 @@ import type { TokenMetrics } from "../types/Widget";
 import type { Tool } from "../types/Tool";
 import { getModelPricing, computeCostFromTokens } from "./model-pricing";
 
-const HOME = process.env.HOME || homedir();
-const DB_DIR = join(HOME, ".config", "statux");
-const DB_PATH = join(DB_DIR, "history.db");
+function getDbDir(): string {
+  const home = process.env.HOME || homedir();
+  return join(home, ".config", "statux");
+}
+
+function getDbPath(): string {
+  return join(getDbDir(), "history.db");
+}
 
 // ─── 数据库初始化 ────────────────────────────────────────────
 
@@ -24,8 +29,10 @@ let db: Database | null = null;
 function getDb(): Database {
   if (db) return db;
 
-  mkdirSync(DB_DIR, { recursive: true });
-  db = new Database(DB_PATH);
+  const dbDir = getDbDir();
+  const dbPath = getDbPath();
+  mkdirSync(dbDir, { recursive: true });
+  db = new Database(dbPath);
   db.exec("PRAGMA journal_mode=WAL");
 
   db.exec(`
@@ -341,4 +348,9 @@ export function closeHistoryDb(): void {
     db.close();
     db = null;
   }
+}
+
+/** 重置数据库连接（测试用）— 关闭当前连接并清空引用 */
+export function resetHistoryDb(): void {
+  closeHistoryDb();
 }
