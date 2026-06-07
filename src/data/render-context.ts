@@ -88,6 +88,7 @@ function buildCodexBridgeRenderContext(
     speedMetrics: speedData?.sessionAverage ?? null,
     windowedSpeedMetrics: speedData?.windowed ?? null,
     sessionDuration,
+    activeDuration: null, // Codex 暂不支持活跃时长计算
     terminalWidth: terminalColumns(),
     usageData: null,
     gitInfo: collectGitInfoForRequirements(bridge.cwd, requirements),
