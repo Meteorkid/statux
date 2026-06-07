@@ -15,7 +15,7 @@ import {
 } from "./codex";
 import { collectGitInfo } from "./git";
 import { collectJujutsuInfo } from "./jujutsu";
-import { parseJsonl, getTokenMetrics, getSessionDuration, getSpeedMetricsCollection } from "./jsonl";
+import { parseJsonl, getTokenMetrics, getSessionDuration, getActiveDuration, getSpeedMetricsCollection } from "./jsonl";
 import { fetchUsageData, extractUsageFromRateLimits } from "./usage-api";
 import { terminalColumns } from "../utils/terminal";
 import { getWidgetRequirements, type WidgetRequirements } from "./widget-requirements";
@@ -44,12 +44,14 @@ function collectJujutsuInfoForRequirements(cwd: string | undefined, requirements
 function getClaudeTranscriptMetrics(transcriptPath?: string): {
   tokenMetrics: RenderContext["tokenMetrics"];
   sessionDuration: string | null;
+  activeDuration: string | null;
   speedMetrics: SpeedMetrics | null;
   windowedSpeedMetrics: RenderContext["windowedSpeedMetrics"];
 } {
   const entries = transcriptPath ? parseJsonl(transcriptPath) : [];
   const tokenMetrics = entries.length > 0 ? getTokenMetrics(entries) : null;
   const sessionDuration = entries.length > 0 ? getSessionDuration(entries) : null;
+  const activeDuration = entries.length > 0 ? getActiveDuration(entries) : null;
 
   let speedMetrics: SpeedMetrics | null = null;
   let windowedSpeedMetrics: RenderContext["windowedSpeedMetrics"] = null;
@@ -61,7 +63,7 @@ function getClaudeTranscriptMetrics(transcriptPath?: string): {
     }
   }
 
-  return { tokenMetrics, sessionDuration, speedMetrics, windowedSpeedMetrics };
+  return { tokenMetrics, sessionDuration, activeDuration, speedMetrics, windowedSpeedMetrics };
 }
 
 function buildCodexBridgeRenderContext(

@@ -327,6 +327,7 @@ export function buildCodexRenderContext(thread: CodexThread, requirements?: { ne
       speedMetrics: speedData?.sessionAverage ?? null,
       windowedSpeedMetrics: speedData?.windowed ?? null,
       sessionDuration,
+      activeDuration: null, // Codex 暂不支持活跃时长计算
       terminalWidth: process.stdout.columns || 80,
       usageData: null,
       gitInfo: requirements?.needsGit !== false ? (collectGitInfo(bridge.cwd) || buildCodexGitInfo(thread)) : null,
@@ -346,6 +347,7 @@ export function buildCodexRenderContext(thread: CodexThread, requirements?: { ne
     speedMetrics: null,
     windowedSpeedMetrics: null,
     sessionDuration,
+    activeDuration: null, // Codex 暂不支持活跃时长计算
     terminalWidth: process.stdout.columns || 80,
     usageData: null,
     gitInfo: null,  // SQLite 无 git 数据，不显示而非误报 clean

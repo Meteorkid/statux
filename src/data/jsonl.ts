@@ -6,7 +6,7 @@
  */
 
 import type { TokenMetrics, SpeedMetrics, SpeedMetricsCollection } from "../types/Widget";
-import { parseJsonlFile, computeTokenMetrics, computeSessionDuration, computeSpeedMetrics, type NormalizedEntry } from "./transcript";
+import { parseJsonlFile, computeTokenMetrics, computeSessionDuration, computeActiveDurationMs, formatDurationMs, computeSpeedMetrics, type NormalizedEntry } from "./transcript";
 
 // ─── Claude 条目类型 ─────────────────────────────────────────
 
@@ -103,4 +103,13 @@ export function getSpeedMetricsCollection(
   const entries = typeof pathOrEntries === "string" ? parseJsonl(pathOrEntries) : pathOrEntries;
   if (entries.length === 0) return null;
   return computeSpeedMetrics(normalizeClaudeEntries(entries), options.windowSeconds);
+}
+
+/** 获取活跃时长（排除闲置时间） */
+export function getActiveDuration(transcriptPath: string): string | null;
+export function getActiveDuration(entries: ClaudeTranscriptEntry[]): string | null;
+export function getActiveDuration(pathOrEntries: string | ClaudeTranscriptEntry[]): string | null {
+  const entries = typeof pathOrEntries === "string" ? parseJsonl(pathOrEntries) : pathOrEntries;
+  if (entries.length === 0) return null;
+  return formatDurationMs(computeActiveDurationMs(normalizeClaudeEntries(entries)));
 }

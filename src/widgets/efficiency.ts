@@ -2,6 +2,7 @@
  * 效率指标 Widget
  *
  * 显示当前会话的费用效率和 token 吞吐率。
+ * 使用活跃时长（排除闲置时间）计算，更准确反映实际效率。
  */
 
 import type { Widget, WidgetItem, RenderContext } from "../types/Widget";
@@ -20,17 +21,19 @@ export const CostRateWidget: Widget = {
   type: "cost-rate",
   category: "session",
   displayName: "Cost Rate",
-  description: "每分钟费用（$/min），衡量 token 消耗效率",
+  description: "每分钟费用（$/min），衡量 token 消耗效率（使用活跃时长）",
   defaultColor: "cyan",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    if (!ctx.sessionDuration) return null;
+    // 优先使用活跃时长，回退到会话时长
+    const duration = ctx.activeDuration || ctx.sessionDuration;
+    if (!duration) return null;
 
     // 使用与 cost widget 相同的双源取大逻辑
     const { cost } = computeSessionCost(ctx);
     if (cost == null || cost <= 0) return null;
 
-    const minutes = parseDurationToMinutes(ctx.sessionDuration);
+    const minutes = parseDurationToMinutes(duration);
     if (minutes <= 0) return null;
 
     const rate = cost / minutes;
@@ -45,13 +48,15 @@ export const TokenRateWidget: Widget = {
   type: "token-rate",
   category: "session",
   displayName: "Token Rate",
-  description: "每分钟 token 吞吐率",
+  description: "每分钟 token 吞吐率（使用活跃时长）",
   defaultColor: "magenta",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    if (!ctx.tokenMetrics || !ctx.sessionDuration) return null;
+    // 优先使用活跃时长，回退到会话时长
+    const duration = ctx.activeDuration || ctx.sessionDuration;
+    if (!ctx.tokenMetrics || !duration) return null;
 
-    const minutes = parseDurationToMinutes(ctx.sessionDuration);
+    const minutes = parseDurationToMinutes(duration);
     if (minutes <= 0) return null;
 
     const tokensPerMin = ctx.tokenMetrics.totalTokens / minutes;
@@ -67,17 +72,19 @@ export const SessionEfficiencyWidget: Widget = {
   type: "session-efficiency",
   category: "session",
   displayName: "Session Efficiency",
-  description: "综合效率指标：费用/token/时长",
+  description: "综合效率指标：费用/token/时长（使用活跃时长）",
   defaultColor: "green",
 
   render(item: WidgetItem, ctx: RenderContext): string | null {
-    if (!ctx.tokenMetrics || !ctx.sessionDuration) return null;
+    // 优先使用活跃时长，回退到会话时长
+    const duration = ctx.activeDuration || ctx.sessionDuration;
+    if (!ctx.tokenMetrics || !duration) return null;
 
     const modelId = typeof ctx.data.model === "string"
       ? ctx.data.model
       : ctx.data.model?.id || ctx.data.model?.display_name || "";
 
-    const minutes = parseDurationToMinutes(ctx.sessionDuration);
+    const minutes = parseDurationToMinutes(duration);
     if (minutes <= 0) return null;
 
     const tokens = ctx.tokenMetrics.totalTokens;

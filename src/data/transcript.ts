@@ -140,6 +140,52 @@ export function computeSessionDuration(entries: NormalizedEntry[]): string | nul
   return `${totalSeconds}s`;
 }
 
+/** 闲置时间阈值：超过此时间间隔视为闲置（毫秒） */
+const IDLE_THRESHOLD_MS = 5 * 60 * 1000; // 5 分钟
+
+/**
+ * 计算活跃时长（排除闲置时间）
+ *
+ * 算法：
+ * 1. 获取所有 finalized 且有 output tokens 的条目
+ * 2. 按时间排序
+ * 3. 计算相邻条目的时间差
+ * 4. 如果时间差 < IDLE_THRESHOLD_MS，计入活跃时间
+ * 5. 如果时间差 >= IDLE_THRESHOLD_MS，视为闲置，不计入
+ */
+export function computeActiveDurationMs(entries: NormalizedEntry[]): number {
+  // 只取有实际输出的 finalized 条目
+  const active = entries
+    .filter((e) => e.isFinalized && e.outputTokens > 0 && e.timestamp > 0)
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  if (active.length < 2) return 0;
+
+  let activeMs = 0;
+  for (let i = 1; i < active.length; i++) {
+    const delta = active[i]!.timestamp - active[i - 1]!.timestamp;
+    // 只计入未超过闲置阈值的时间差
+    if (delta < IDLE_THRESHOLD_MS) {
+      activeMs += delta;
+    }
+  }
+
+  return activeMs;
+}
+
+/** 将毫秒转换为可读时长字符串 */
+export function formatDurationMs(ms: number): string | null {
+  if (ms <= 0) return null;
+
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) return `${hours}h${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${totalSeconds}s`;
+}
+
 // ─── 速度指标计算 ────────────────────────────────────────────
 
 /** 从归一化条目计算速度指标 */

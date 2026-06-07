@@ -76,6 +76,7 @@ export interface RenderContext {
   speedMetrics: SpeedMetrics | null;
   windowedSpeedMetrics: Record<string, SpeedMetrics> | null;
   sessionDuration: string | null;
+  activeDuration: string | null; // 活跃时长（排除闲置时间）
   terminalWidth: number;
   usageData: UsageData | null;
   gitInfo: GitInfo | null;
