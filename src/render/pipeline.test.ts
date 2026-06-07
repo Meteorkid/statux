@@ -28,6 +28,7 @@ function context(): RenderContext {
     speedMetrics: null,
     windowedSpeedMetrics: null,
     sessionDuration: null,
+    activeDuration: null,
     terminalWidth: 80,
     usageData: null,
     gitInfo: null,
