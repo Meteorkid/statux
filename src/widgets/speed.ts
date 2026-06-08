@@ -26,7 +26,6 @@ export const OutputSpeedWidget: Widget = {
     if (!ctx.speedMetrics) return null;
     const window = item.metadata?.window as number | undefined;
     const speed = resolveSpeed(ctx.speedMetrics, ctx.windowedSpeedMetrics, window, "output");
-    if (speed === 0) return null;
     const label = item.rawValue ? "" : "out-spd:";
     return colorize(`${label}${formatSpeed(speed)}`, item.color || this.defaultColor, item.bold);
   },
@@ -43,7 +42,6 @@ export const TotalSpeedWidget: Widget = {
     if (!ctx.speedMetrics) return null;
     const window = item.metadata?.window as number | undefined;
     const speed = resolveSpeed(ctx.speedMetrics, ctx.windowedSpeedMetrics, window, "total");
-    if (speed === 0) return null;
     return colorize(formatSpeed(speed), item.color || this.defaultColor, item.bold);
   },
 };

@@ -79,17 +79,24 @@ export function assembleStatusLine(
     return false;
   });
 
-  // 移除孤立分隔符（前后都是 null 或分隔符的分隔符）
-  const cleaned = visible.filter((w, i) => {
-    if (w.item.type !== "separator") return true;
-    const prev = i > 0 ? visible[i - 1] : null;
-    const next = i < visible.length - 1 ? visible[i + 1] : null;
-    // 如果前后都是分隔符或边界，这个分隔符是孤立的
-    const prevIsSep = !prev || prev.item.type === "separator";
-    const nextIsSep = !next || next.item.type === "separator";
-    if (prevIsSep && nextIsSep) return false;
-    return true;
-  });
+  // 移除连续的分隔符（只保留第一个）和孤立分隔符
+  const cleaned: PreRenderedWidget[] = [];
+  let lastWasSep = false;
+  let prevNonSepFound = false;
+  for (const w of visible) {
+    if (w.item.type === "separator") {
+      if (lastWasSep || !prevNonSepFound) continue; // 跳过连续的分隔符或开头的分隔符
+      lastWasSep = true;
+    } else {
+      lastWasSep = false;
+      prevNonSepFound = true;
+    }
+    cleaned.push(w);
+  }
+  // 移除末尾的孤立分隔符
+  while (cleaned.length > 0 && cleaned[cleaned.length - 1].item.type === "separator") {
+    cleaned.pop();
+  }
 
   // 组装各 widget 文本
   const parts: string[] = [];

@@ -25,7 +25,7 @@ export const InputSpeedWidget: Widget = {
     if (speed == null && ctx.speedMetrics) {
       speed = ctx.speedMetrics.inputTokensPerSecond;
     }
-    if (speed == null || speed === 0) return null;
+    if (speed == null) return null;
     return colorize(formatSpeed(speed), item.color || this.defaultColor, item.bold);
   },
 };
