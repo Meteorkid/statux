@@ -94,7 +94,7 @@ export function assembleStatusLine(
     cleaned.push(w);
   }
   // 移除末尾的孤立分隔符
-  while (cleaned.length > 0 && cleaned[cleaned.length - 1].item.type === "separator") {
+  while (cleaned.length > 0 && cleaned[cleaned.length - 1]?.item.type === "separator") {
     cleaned.pop();
   }
 
