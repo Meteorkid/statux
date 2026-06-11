@@ -56,7 +56,7 @@ function getClaudeTranscriptMetrics(transcriptPath?: string): {
   let speedMetrics: SpeedMetrics | null = null;
   let windowedSpeedMetrics: RenderContext["windowedSpeedMetrics"] = null;
   if (entries.length > 0) {
-    const collection = getSpeedMetricsCollection(entries, { windowSeconds: [30, 60] });
+    const collection = getSpeedMetricsCollection(entries, { windowSeconds: [10, 30, 60] });
     if (collection) {
       speedMetrics = collection.sessionAverage;
       windowedSpeedMetrics = collection.windowed;
