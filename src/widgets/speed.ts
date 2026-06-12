@@ -6,8 +6,9 @@ function formatSpeed(tokensPerSec: number): string {
   return `${Math.round(tokensPerSec)}/s`;
 }
 
-function resolveSpeed(sm: SpeedMetrics, windowed: Record<string, SpeedMetrics> | null, window: number | undefined, direction: "total" | "input" | "output"): number {
-  const src = window && windowed?.[String(window)] ? windowed[String(window)]! : sm;
+function resolveSpeed(sm: SpeedMetrics, windowed: Record<string, SpeedMetrics> | null, window: number | undefined, windowSeconds: number | undefined, direction: "total" | "input" | "output"): number {
+  const w = window || windowSeconds;
+  const src = w && windowed?.[String(w)] ? windowed[String(w)]! : sm;
   switch (direction) {
     case "input": return src.inputTokensPerSecond;
     case "output": return src.outputTokensPerSecond;
@@ -25,7 +26,8 @@ export const OutputSpeedWidget: Widget = {
   render(item: WidgetItem, ctx: RenderContext): string | null {
     if (!ctx.speedMetrics) return null;
     const window = item.metadata?.window as number | undefined;
-    const speed = resolveSpeed(ctx.speedMetrics, ctx.windowedSpeedMetrics, window, "output");
+    const windowSeconds = item.metadata?.windowSeconds as number | undefined;
+    const speed = resolveSpeed(ctx.speedMetrics, ctx.windowedSpeedMetrics, window, windowSeconds, "output");
     const label = item.rawValue ? "" : "out-spd:";
     return colorize(`${label}${formatSpeed(speed)}`, item.color || this.defaultColor, item.bold);
   },
@@ -41,7 +43,8 @@ export const TotalSpeedWidget: Widget = {
   render(item: WidgetItem, ctx: RenderContext): string | null {
     if (!ctx.speedMetrics) return null;
     const window = item.metadata?.window as number | undefined;
-    const speed = resolveSpeed(ctx.speedMetrics, ctx.windowedSpeedMetrics, window, "total");
+    const windowSeconds = item.metadata?.windowSeconds as number | undefined;
+    const speed = resolveSpeed(ctx.speedMetrics, ctx.windowedSpeedMetrics, window, windowSeconds, "total");
     return colorize(formatSpeed(speed), item.color || this.defaultColor, item.bold);
   },
 };

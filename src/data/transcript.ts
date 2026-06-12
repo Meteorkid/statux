@@ -191,7 +191,7 @@ export function formatDurationMs(ms: number): string | null {
 /** 从归一化条目计算速度指标 */
 export function computeSpeedMetrics(
   entries: NormalizedEntry[],
-  windows: number[] = [30, 60]
+  windows: number[] = [10, 30, 60]
 ): SpeedMetricsCollection | null {
   if (entries.length === 0) return null;
 
@@ -233,9 +233,11 @@ export function computeSpeedMetrics(
     const windowInput = windowEvents.reduce((sum, t) => sum + t.input, 0);
     const windowOutput = windowEvents.reduce((sum, t) => sum + t.output, 0);
     const windowDuration =
-      windowEvents.length > 1
-        ? (windowEvents[windowEvents.length - 1]!.time - windowEvents[0]!.time) / 1000
-        : w;
+      windowEvents.length === 0
+        ? 0
+        : windowEvents.length > 1
+          ? (windowEvents[windowEvents.length - 1]!.time - windowEvents[0]!.time) / 1000
+          : Math.min(w, (now - windowEvents[0]!.time) / 1000);
 
     windowed[String(w)] = makeSpeedMetrics(windowInput, windowOutput, windowDuration);
   }

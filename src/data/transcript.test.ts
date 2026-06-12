@@ -146,4 +146,35 @@ describe("computeSpeedMetrics", () => {
     expect(result!.windowed["120"]).toBeDefined();
     expect(result!.windowed["60"]!.tokensPerSecond).toBeGreaterThanOrEqual(0);
   });
+
+  test("computes 10-second window metrics", () => {
+    const now = Date.now();
+    const entries: NormalizedEntry[] = [
+      { timestamp: now - 60_000, inputTokens: 100, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, isFinalized: true, isSidechain: false },
+      { timestamp: now - 5_000, inputTokens: 200, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, isFinalized: true, isSidechain: false },
+      { timestamp: now, inputTokens: 300, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, isFinalized: true, isSidechain: false },
+    ];
+    const result = computeSpeedMetrics(entries, [10, 30, 60]);
+    expect(result).not.toBeNull();
+    // 10s 窗口只包含最近两个事件
+    expect(result!.windowed["10"]).toBeDefined();
+    expect(result!.windowed["10"]!.inputTokensPerSecond).toBeGreaterThan(0);
+    expect(result!.windowed["30"]).toBeDefined();
+    expect(result!.windowed["60"]).toBeDefined();
+  });
+
+  test("single event in window uses actual time delta", () => {
+    const now = Date.now();
+    // 只有一个事件在 10 秒窗口内，发生在 3 秒前
+    const entries: NormalizedEntry[] = [
+      { timestamp: now - 60_000, inputTokens: 100, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, isFinalized: true, isSidechain: false },
+      { timestamp: now - 3_000, inputTokens: 200, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, isFinalized: true, isSidechain: false },
+    ];
+    const result = computeSpeedMetrics(entries, [10]);
+    expect(result).not.toBeNull();
+    expect(result!.windowed["10"]).toBeDefined();
+    // 应该用 ~3 秒计算，而不是 10 秒
+    const speed = result!.windowed["10"]!.inputTokensPerSecond;
+    expect(speed).toBeGreaterThan(0);
+  });
 });

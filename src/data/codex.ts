@@ -227,7 +227,7 @@ export function buildCodexSessionDurationFromTranscript(transcriptPath: string):
 /** 从 Codex transcript 提取速度指标 */
 export function buildCodexSpeedMetricsFromTranscript(
   transcriptPath: string,
-  windows: number[] = [30, 60]
+  windows: number[] = [10, 30, 60]
 ): { sessionAverage: SpeedMetrics; windowed: Record<string, SpeedMetrics> } | null {
   const entries = parseCodexTranscript(transcriptPath);
   if (entries.length === 0) return null;
