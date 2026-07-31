@@ -303,7 +303,7 @@ statux 提供 72 个 Widget，分为 11 个类别。每个 Widget 都支持自�
 
 ### Tokens & Speed — Token 与速度
 
-9 个 Widget，显示 Token 消耗和生成速度。
+8 个 Widget，显示 Token 消耗和生成速度。
 
 | Widget | 类型 | 说明 | 输出示例 |
 |--------|------|------|---------|

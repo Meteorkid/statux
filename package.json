@@ -1,7 +1,7 @@
 {
   "name": "@statux/cli",
   "version": "0.4.3",
-  "description": "AI Agent status display for Claude Code and iTerm2",
+  "description": "AI Agent status display for Claude Code, Codex (OpenAI), and iTerm2",
   "type": "module",
   "bin": {
     "statux": "./src/cli.ts"
@@ -14,6 +14,8 @@
   ],
   "keywords": [
     "claude-code",
+    "codex",
+    "openai",
     "iterm2",
     "statusline",
     "status-bar",

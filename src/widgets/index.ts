@@ -41,7 +41,7 @@ import { JjBookmarksWidget, JjWorkspaceWidget, JjRootDirWidget, JjChangesWidget,
 import { HistoryTodayWidget, HistoryWeekWidget, HistoryCostWidget } from "./history-summary";
 import { CostRateWidget, TokenRateWidget, SessionEfficiencyWidget } from "./efficiency";
 
-/** 注册所有内置 widget（72 个，含历史 3 + 效率 3） */
+/** 注册所有内置 widget（72 个：Core 9 + Context 6 + Tokens 8 + Git 17 + Session 7 + Usage 5 + Custom 4 + Jujutsu 8 + History 3 + Efficiency 3 + Layout 2） */
 export function registerAllWidgets(): void {
   // === Core (9) ===
   registerWidget(ModelWidget);
@@ -62,7 +62,7 @@ export function registerAllWidgets(): void {
   registerWidget(ContextPctUsableWidget);
   registerWidget(CompactionWidget);
 
-  // === Tokens & Speed (9) ===
+  // === Tokens & Speed (8) ===
   registerWidget(TokensWidget);
   registerWidget(TokensInputWidget);
   registerWidget(TokensOutputWidget);
