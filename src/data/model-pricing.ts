@@ -66,14 +66,14 @@ const PRICING_TABLE: { pattern: RegExp; pricing: ModelPricing; name: string }[] 
   { pattern: /3-haiku|haiku-3(?!-)/, name: "Claude Haiku 3",
     pricing: { input: 0.25, output: 1.25, cacheWrite5m: 0.30, cacheWrite1h: 0.50, cacheRead: 0.03 } },
 
-  // ── DeepSeek 系列（来源：api-docs.deepseek.com/quick_start/pricing） ──
-  // V4 系列: cache hit 价格大幅低于 miss
+  // ── DeepSeek 系列（来源：api-docs.deepseek.com，2026.05.22 永久调价） ──
+  // V4 系列: cache hit 价格大幅低于 miss（¥7.2/$）
   { pattern: /deepseek.*v4.*flash|deepseek-v4-flash/, name: "DeepSeek V4 Flash",
     pricing: { input: 0.14, output: 0.28, cacheWrite5m: 0.14, cacheWrite1h: 0.14, cacheRead: 0.0028 } },
   { pattern: /deepseek.*v4.*pro|deepseek-v4-pro/, name: "DeepSeek V4 Pro",
-    pricing: { input: 0.435, output: 0.87, cacheWrite5m: 0.435, cacheWrite1h: 0.435, cacheRead: 0.003625 } },
+    pricing: { input: 0.42, output: 0.83, cacheWrite5m: 0.42, cacheWrite1h: 0.42, cacheRead: 0.0035 } },
   { pattern: /deepseek.*v4|deepseek-v4/, name: "DeepSeek V4",
-    pricing: { input: 0.435, output: 0.87, cacheWrite5m: 0.435, cacheWrite1h: 0.435, cacheRead: 0.003625 } },
+    pricing: { input: 0.42, output: 0.83, cacheWrite5m: 0.42, cacheWrite1h: 0.42, cacheRead: 0.0035 } },
   { pattern: /deepseek.*v3\.2.*speciale|v3\.2-speciale/, name: "DeepSeek V3.2 Speciale",
     pricing: { input: 0.40, output: 1.20, cacheWrite5m: 0.40, cacheWrite1h: 0.40, cacheRead: 0.04 } },
   { pattern: /deepseek.*v3\.2|deepseek-v3\.2/, name: "DeepSeek V3.2",
@@ -116,11 +116,15 @@ const PRICING_TABLE: { pattern: RegExp; pricing: ModelPricing; name: string }[] 
   { pattern: /moonshot/, name: "Moonshot",
     pricing: { input: 0.74, output: 3.49, cacheWrite5m: 0.74, cacheWrite1h: 0.74, cacheRead: 0.074 } },
 
-  // ── MiMo 系列 ─────────────────────────────────────────────
+  // ── MiMo 系列（来源：platform.xiaomimimo.com，2026.05.27 生效，¥7.2/$） ──
+  // V2.5 系列: 旗舰模型，1M 上下文
+  { pattern: /mimo.*v2\.5.*pro.*ultra|mimo-v2\.5-pro-ultraspeed/, name: "MiMo V2.5 Pro UltraSpeed",
+    pricing: { input: 1.25, output: 2.50, cacheWrite5m: 1.25, cacheWrite1h: 1.25, cacheRead: 0.0104 } },
   { pattern: /mimo.*v2\.5.*pro|mimo-v2\.5-pro/, name: "MiMo V2.5 Pro",
-    pricing: { input: 1, output: 3, cacheWrite5m: 1, cacheWrite1h: 1, cacheRead: 0.10 } },
+    pricing: { input: 0.42, output: 0.83, cacheWrite5m: 0.42, cacheWrite1h: 0.42, cacheRead: 0.0035 } },
   { pattern: /mimo.*v2\.5(?!.*pro)|mimo-v2\.5$/, name: "MiMo V2.5",
-    pricing: { input: 0.40, output: 2, cacheWrite5m: 0.40, cacheWrite1h: 0.40, cacheRead: 0.04 } },
+    pricing: { input: 0.14, output: 0.28, cacheWrite5m: 0.14, cacheWrite1h: 0.14, cacheRead: 0.0028 } },
+  // V2 系列: 即将下线
   { pattern: /mimo.*v2.*pro(?!.*flash)|mimo-v2-pro/, name: "MiMo V2 Pro",
     pricing: { input: 1, output: 3, cacheWrite5m: 1, cacheWrite1h: 1, cacheRead: 0.10 } },
   { pattern: /mimo.*v2.*flash|mimo-v2-flash/, name: "MiMo V2 Flash",
