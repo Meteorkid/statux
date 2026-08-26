@@ -13,6 +13,8 @@ statux 是一个终端状态显示工具，为 [Claude Code](https://docs.anthro
 git:main │ ±5 │ $/min:$0.01/min │ rl:42% │ tools:Read→Edit
 ```
 
+> 下载 · 文档 · 更新：<https://www.imagentx.top/zh/products/statux>
+
 ---
 
 ## 目录
