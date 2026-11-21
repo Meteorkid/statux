@@ -1,0 +1,34 @@
+{
+  "title": "Statux: AI Agent Status Display for Claude Code and iTerm2",
+  "description": "<p>Statux renders live status for AI coding agents in the terminal and in iTerm2, showing model, token usage and session state without leaving the shell. Distributed free of charge for macOS.</p>",
+  "creators": [
+    {
+      "name": "Liu, Xinyu",
+      "affiliation": "Guangdong Polytechnic Normal University",
+      "orcid": "0009-0000-6888-0110"
+    }
+  ],
+  "upload_type": "software",
+  "license": "Apache-2.0",
+  "access_right": "open",
+  "language": "eng",
+  "keywords": [
+    "developer tools",
+    "ai agents",
+    "macos",
+    "cli",
+    "iterm2"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://imagentx.top/products/statux",
+      "relation": "isSupplementedBy",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "https://github.com/Meteorkid/statux",
+      "relation": "isIdenticalTo",
+      "resource_type": "software"
+    }
+  ]
+}
