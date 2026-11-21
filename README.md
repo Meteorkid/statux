@@ -3,7 +3,7 @@
 > AI Agent status display for Claude Code, Codex (OpenAI), and iTerm2
 
 [![npm](https://img.shields.io/npm/v/@statux/cli)](https://www.npmjs.com/package/@statux/cli)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)]()
 
 statux 是一个终端状态显示工具，为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex (OpenAI)](https://github.com/openai/codex) 和 [iTerm2](https://iterm2.com/) 提供 AI Agent 的实时状态信息。支持 72 个可配置 Widget、Powerline 渲染、交互式 TUI 配置界面。
@@ -819,4 +819,4 @@ git push origin v0.2.0
 
 ## License
 
-[MIT](LICENSE)
+[Apache License 2.0](LICENSE)
